@@ -16,17 +16,8 @@
   .step strong {color:#1b5e20;}
   #euclid-img {width:240px; margin:10px auto 10px; border-radius:20px; border:8px solid white; box-shadow:0 8px 25px rgba(0,0,0,0.25);}
   #finalResult {
-    font-size:3.2em;
-    font-weight:bold;
-    color:#a855f7;
-    line-height:1.5;
-    /* tighter line spacing */
-    margin:60px 0;
-    padding:40px;
-    background:#f3e8ff;
-    border-radius:20px;
-    border-left:14px solid #a855f7;
-    display:none;
+    font-size:3.2em; font-weight:bold; color:#a855f7; line-height:1.5;
+    margin:60px 0; padding:40px; background:#f3e8ff; border-radius:20px; border-left:14px solid #a855f7; display:none;
   }
 </style>
 </head>
@@ -78,14 +69,14 @@ function findGCD() {
       text += `Divide <strong>${x}</strong> by <strong>${y}</strong>:<br>` +
               `• Quotient = ${quotient} (ignored)<br>` +
               `• Remainder = ${remainder}<br>` +
-              `Continue the algorithm with <strong>${y}</strong> and <strong>${remainder}</strong>.`;
+              `Continue the algorithm with the smaller number <strong>${y}</strong> and the remainder <strong>${remainder}</strong>.`;
+
       addStep(step++, text);
     } else {
       let text = `<strong>${x} is divisible by ${y} (remainder = 0).</strong><br>` +
                  `Therefore, the Greatest Common Divisor is <strong>${y}</strong>!`;
       addStep(step++, text);
 
-      // Final result — no extra blank line when coprime
       let resultHTML = `<strong>${y}</strong> is the GCD of <strong>${originalA}</strong> and <strong>${originalB}</strong>`;
       if (y === 1) {
         resultHTML += `<br>These two numbers are <strong>coprime</strong>!`;
