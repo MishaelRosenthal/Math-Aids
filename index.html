@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Euclid GCD Algorithm</title>
+<style>
+  body {font-family: Arial, sans-serif; background: linear-gradient(to bottom, #e8f5e9, #c8e6c9); margin:0; padding:20px; text-align:center; color:#333;}
+  h1 {color:#2e7d32; font-size:3.2em; margin:20px 0 10px 0; line-height:1.2;}
+  .card {max-width:900px; margin:30px auto; background:white; padding:50px; border-radius:20px; box-shadow:0 12px 35px rgba(0,0,0,0.15);}
+  .input-row {display:flex; justify-content:center; align-items:center; gap:80px; margin:50px 0 20px 0; flex-wrap:wrap;}
+  .input-group label {display:block; font-size:2em; margin-bottom:10px; color:#2e7d32;}
+  input {width:180px; padding:18px; font-size:2.8em; text-align:center; border:6px solid #43a047; border-radius:15px;}
+  button {padding:20px 60px; font-size:2em; background:#43a047; color:white; border:none; border-radius:15px; cursor:pointer; margin:30px 0;}
+  button:hover {background:#2e7d32;}
+  .step {background:#f9fff9; padding:28px; margin:30px auto; border-radius:15px; font-size:1.75em; max-width:820px; border-left:14px solid #66bb6a; text-align:left; display:none; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
+  .step strong {color:#1b5e20;}
+  #euclid-img {width:240px; margin:10px auto 10px; border-radius:20px; border:8px solid white; box-shadow:0 8px 25px rgba(0,0,0,0.25);}
+  #finalResult {
+    font-size:3.2em;
+    font-weight:bold;
+    color:#a855f7;
+    line-height:1.5;
+    /* tighter line spacing */
+    margin:60px 0;
+    padding:40px;
+    background:#f3e8ff;
+    border-radius:20px;
+    border-left:14px solid #a855f7;
+    display:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Euclid GCD Algorithm<br>for Finding the<br>Greatest Common Divisor (Factor)</h1>
+
+  <img id="euclid-img" src="https://www.worldhistory.org/uploads/images/4139.jpg?v=1747264448-0" alt="Euclid of Alexandria">
+
+  <div class="input-row">
+    <div class="input-group"><label>First number</label><input type="number" id="a" value="48" min="1"></div>
+    <div class="input-group"><label>Second number</label><input type="number" id="b" value="18" min="1"></div>
+  </div>
+
+  <button onclick="findGCD()">Show the Steps</button>
+
+  <div id="steps"></div>
+  <div id="finalResult" style="display:none;"></div>
+</div>
+
+<script>
+function findGCD() {
+  let originalA = parseInt(document.getElementById("a").value);
+  let originalB = parseInt(document.getElementById("b").value);
+
+  if (isNaN(originalA) || isNaN(originalB) || originalA <= 0 || originalB <= 0) {
+    alert("Please enter two positive numbers!");
+    return;
+  }
+
+  let x = originalA;
+  let y = originalB;
+  if (x < y) [x, y] = [y, x];
+
+  document.getElementById("steps").innerHTML = "";
+  document.getElementById("finalResult").style.display = "none";
+
+  let step = 1;
+  let isFirstStep = true;
+
+  while (y !== 0) {
+    let quotient  = Math.floor(x / y);
+    let remainder = x % y;
+
+    if (remainder !== 0) {
+      let text = "";
+      if (isFirstStep) { text = `Divide the larger number by the smaller one.<br>`; isFirstStep = false; }
+      text += `Divide <strong>${x}</strong> by <strong>${y}</strong>:<br>` +
+              `• Quotient = ${quotient} (ignored)<br>` +
+              `• Remainder = ${remainder}<br>` +
+              `Continue the algorithm with <strong>${y}</strong> and <strong>${remainder}</strong>.`;
+      addStep(step++, text);
+    } else {
+      let text = `<strong>${x} is divisible by ${y} (remainder = 0).</strong><br>` +
+                 `Therefore, the Greatest Common Divisor is <strong>${y}</strong>!`;
+      addStep(step++, text);
+
+      // Final result — no extra blank line when coprime
+      let resultHTML = `<strong>${y}</strong> is the GCD of <strong>${originalA}</strong> and <strong>${originalB}</strong>`;
+      if (y === 1) {
+        resultHTML += `<br>These two numbers are <strong>coprime</strong>!`;
+      }
+      document.getElementById("finalResult").innerHTML = resultHTML;
+      document.getElementById("finalResult").style.display = "block";
+      break;
+    }
+    x = y;
+    y = remainder;
+  }
+
+  const steps = document.getElementsByClassName("step");
+  for (let s of steps) s.style.display = "block";
+}
+
+function addStep(n, text) {
+  const div = document.createElement("div");
+  div.className = "step";
+  div.innerHTML = `<strong>Step ${n}:</strong><br>${text}`;
+  document.getElementById("steps").appendChild(div);
+}
+</script>
+
+<p style="margin-top:80px; font-size:1.6em; color:#555;">
+  Euclid’s Algorithm — invented over 2,300 years ago<br>and still the fastest method today!
+</p>
+
+</body>
+</html>
