@@ -19,6 +19,8 @@
     font-size:3.2em; font-weight:bold; color:#a855f7; line-height:1.5;
     margin:60px 0; padding:40px; background:#f3e8ff; border-radius:20px; border-left:14px solid #a855f7; display:none;
   }
+  /* Make all important numbers bright green */
+  .highlight {color:#2e7d32; font-weight:bold;}
 </style>
 </head>
 <body>
@@ -66,10 +68,10 @@ function findGCD() {
     if (remainder !== 0) {
       let text = "";
       if (isFirstStep) { text = `Divide the larger number by the smaller one.<br>`; isFirstStep = false; }
-      text += `Divide <strong>${x}</strong> by <strong>${y}</strong>:<br>` +
+      text += `Divide <span class="highlight">${x}</span> by <span class="highlight">${y}</span>:<br>` +
               `• Quotient = ${quotient} (ignored)<br>` +
-              `• Remainder = ${remainder}<br>` +
-              `Continue the algorithm with the smaller number <strong>${y}</strong> and the remainder <strong>${remainder}</strong>.`;
+              `• Remainder = <span class="highlight">${remainder}</span><br>` +
+              `Continue the algorithm with the smaller number <span class="highlight">${y}</span> and the remainder <span class="highlight">${remainder}</span>.`;
 
       addStep(step++, text);
     } else {
@@ -77,7 +79,7 @@ function findGCD() {
                  `Therefore, the Greatest Common Divisor is <strong>${y}</strong>!`;
       addStep(step++, text);
 
-      let resultHTML = `<strong>${y}</strong> is the GCD of <strong>${originalA}</strong> and <strong>${originalB}</strong>`;
+      let resultHTML = `<span class="highlight">${y}</span> is the GCD of <span class="highlight">${originalA}</span> and <span class="highlight">${originalB}</span>`;
       if (y === 1) {
         resultHTML += `<br>These two numbers are <strong>coprime</strong>!`;
       }
