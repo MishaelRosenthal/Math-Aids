@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Primality Testing Using Eratosthenes’s Sieve</title>
+<style>
+  body {font-family: Arial, sans-serif; background: linear-gradient(to bottom, #e8f5e9, #c8e6c9); margin:0; padding:20px; text-align:center; color:#333;}
+  h1 {color:#2e7d32; font-size:3.2em; margin:20px 0 10px 0; line-height:1.2; font-weight:bold;}
+  .card {max-width:1100px; margin:30px auto; background:white; padding:50px; border-radius:20px; box-shadow:0 12px 35px rgba(0,0,0,0.15);}
+  .input-row {display:flex; justify-content:center; gap:80px; margin:30px 0 10px 0; flex-wrap:wrap; align-items:center;}
+  .input-group label {display:block; font-size:2em; margin-bottom:10px; color:#2e7d32;}
+  input[type="number"] {width:200px; padding:18px; font-size:2.8em; text-align:center; border:6px solid #43a047; border-radius:15px;}
+  button {padding:20px 80px; font-size:2em; background:#43a047; color:white; border:none; border-radius:15px; cursor:pointer; margin:10px 10px;}
+  button:hover:not(:disabled) {background:#2e7d32;}
+  button:disabled {background:#a5d6a7; cursor:not-allowed; opacity:0.7;}
+
+  .speed-control {
+    margin: 20px auto;
+    max-width: 900px;
+    font-size: 1.8em;
+    color: #1b5e20;
+  }
+  .speed-control label {display:block; margin-bottom:10px;}
+  input[type="range"] {
+    width: 100%; height: 15px; border-radius: 10px; background: #ddd; outline: none; -webkit-appearance: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 40px; height: 40px; border-radius: 50%; background: #43a047; cursor: pointer; box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  }
+
+  #currentAction {
+    background:#f9fff9;
+    padding: 36px;
+    margin: 30px auto 80px; /* Increased bottom margin */
+    border-radius: 15px;
+    font-size: 3.0em;
+    font-weight: bold;
+    color: #1b5e20;
+    max-width: 960px;
+    border-left: 14px solid #66bb6a;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    line-height: 1.35;
+    position: relative;
+    z-index: 10;
+  }
+  .highlight-k {color:#ff6f00; font-size:1.1em;}
+  .prime-text {color:#e91e63; font-size:1.18em; font-weight:bold;}
+  .composite-text {color:#c62828;}
+  .killer-prime {color:#2e7d32; font-size:1.5em; font-weight:bold;}
+
+  /* Extra breathing room before the grid */
+  .grid {
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap:20px;
+    max-width:720px;
+    margin: 120px auto 50px; /* Much more space above the grid */
+    font-size:2.4em;
+    font-weight:bold;
+    position: relative;
+    z-index: 1;
+  }
+  .num {
+    padding:24px; background:#e8f5e9; border-radius:18px; transition:all 0.6s; position:relative; z-index:1;
+  }
+  .pulse-now {animation: pulse 1.4s ease-out forwards !important; z-index: 100 !important;}
+  .crossed {background:#ffcdd2 !important; color:#b71c1c !important; text-decoration:line-through; opacity:0.85;}
+  .prime {background:#c8e6c9 !important; color:#1b5e20 !important; font-weight:bold; box-shadow:0 0 35px #66bb6a;}
+  .current-prime {background:#81c784 !important; color:white !important; box-shadow:0 0 90px #4caf50; transform:scale(2.3) !important; z-index:200;}
+  .killer-enlarged {
+    transform:scale(3.5) !important;
+    background:#43a047 !important;
+    color:white !important;
+    font-weight:bold !important;
+    box-shadow:0 0 120px #43a047 !important;
+    z-index:300 !important;
+  }
+  @keyframes pulse {
+    0%   { transform:scale(1);   box-shadow:0 0 0 rgba(255,152,0,0); }
+    40%  { transform:scale(3.4); box-shadow:0 0 160px #ff9800; }
+    100% { transform:scale(1);   box-shadow:0 0 30px rgba(255,152,0,0.4); }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Primality Testing Using Eratosthenes’s Sieve</h1>
+  
+  <img src="https://igonzalez1.weebly.com/uploads/2/5/7/5/25754627/901195.jpg" 
+       alt="Eratosthenes of Cyrene" 
+       style="width:280px; border-radius:20px; border:8px solid white; box-shadow:0 8px 30px rgba(0,0,0,0.25); margin:20px auto; display:block;">
+
+  <div class="input-row">
+    <div class="input-group">
+      <label>Test number</label>
+      <input type="number" id="target" value="539" min="10" max="10000">
+    </div>
+  </div>
+
+  <button onclick="startSieve()">Start New Test</button>
+  <button id="nextBtn" onclick="nextStep()" disabled>Next Step</button>
+
+  <div class="speed-control">
+    <label for="speed">Animation Speed: <span id="speedValue">Medium</span></label>
+    <input type="range" id="speed" min="1" max="5" value="3" step="1">
+  </div>
+
+  <div id="currentAction">Click “Start New Test” to begin…</div>
+
+  <div id="grid" class="grid"></div>
+</div>
+
+<script>
+let targetNum, checkUpTo;
+let sieve = [];
+let currentPrime = 2;
+let phase = 0;
+
+const speedMap = {
+  1: { base: 1200, step: 1400, label: "Very Slow" },
+  2: { base: 900,  step: 1100, label: "Slow" },
+  3: { base: 700,  step: 800,  label: "Medium" },
+  4: { base: 400,  step: 500,  label: "Fast" },
+  5: { base: 150,  step: 200,  label: "Lightning" }
+};
+
+function getSpeed() {
+  const level = document.getElementById("speed").value;
+  document.getElementById("speedValue").textContent = speedMap[level].label;
+  return speedMap[level];
+}
+document.getElementById("speed").addEventListener("input", getSpeed);
+
+function startSieve() {
+  targetNum = parseInt(document.getElementById("target").value);
+  if (!targetNum || targetNum < 10) return alert("Enter a number ≥ 10");
+
+  phase = 0;
+  currentPrime = 2;
+  document.getElementById("grid").innerHTML = "";
+  document.getElementById("nextBtn").disabled = false;
+
+  let k = 2;
+  while (k * k <= targetNum) k++;
+  checkUpTo = k - 1;
+
+  document.getElementById("currentAction").innerHTML = 
+    `First, find the smallest number <strong>k</strong> such that <strong>k × k > ${targetNum}</strong><br>
+     <span class="highlight-k">Answer: k = ${k}</span><br>
+     Click “Next Step” to find all the primes lesser than ${k}…`;
+}
+
+function nextStep() {
+  if (phase === 0) {
+    const grid = document.getElementById("grid");
+    sieve = Array(checkUpTo + 1).fill(true);
+    sieve[0] = sieve[1] = false;
+
+    for (let i = 2; i <= checkUpTo; i++) {
+      const cell = document.createElement("div");
+      cell.className = "num";
+      cell.textContent = i;
+      cell.id = "n" + i;
+      grid.appendChild(cell);
+    }
+
+    document.getElementById("currentAction").textContent = "Ready! Click “Next Step” to begin";
+    phase = 1;
+    return;
+  }
+
+  document.getElementById("nextBtn").disabled = true;
+
+  while (currentPrime <= checkUpTo && !sieve[currentPrime]) {
+    currentPrime++;
+  }
+
+  if (currentPrime > checkUpTo) {
+    document.getElementById("currentAction").innerHTML = 
+      `<span class="prime-text"><strong>${targetNum} is prime</strong></span>, it has no divisors among 2–${checkUpTo}!`;
+    return;
+  }
+
+  const p = currentPrime;
+  const speed = getSpeed();
+
+  if (targetNum % p === 0) {
+    document.getElementById("currentAction").innerHTML = 
+      `<strong>${targetNum} is divisible by <span class="killer-prime">${p}</span></strong><br>It is <span class="composite-text">composite</span>.`;
+
+    const cell = document.getElementById("n" + p);
+    if (cell) {
+      cell.classList.add("killer-enlarged");
+    }
+    return;
+  } else {
+    document.getElementById("currentAction").innerHTML = 
+      `<strong>${targetNum} is not divisible by ${p}.</strong><br>Cross all the multiples of ${p}.`;
+  }
+
+  document.getElementById("n" + p).classList.add("current-prime");
+
+  let delay = speed.base;
+
+  for (let m = p * 2; m <= checkUpTo; m += p) {
+    sieve[m] = false;
+
+    setTimeout(() => {
+      const cell = document.getElementById("n" + m);
+      if (cell) {
+        cell.classList.remove("pulse-now");
+        void cell.offsetWidth;
+        cell.classList.add("pulse-now");
+        cell.classList.add("crossed");
+      }
+    }, delay);
+    delay += speed.step;
+  }
+
+  setTimeout(() => {
+    const cell = document.getElementById("n" + p);
+    cell.classList.remove("current-prime");
+    cell.classList.add("prime");
+    sieve[p] = false;
+    currentPrime = p + 1;
+    document.getElementById("nextBtn").disabled = false;
+  }, delay + 600);
+}
+</script>
+</body>
+</html>
