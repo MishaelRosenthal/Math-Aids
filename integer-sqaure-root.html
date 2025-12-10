@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Find the Integer Square Root</title>
+<style>
+  body {font-family: Arial, sans-serif; background: linear-gradient(to bottom, #e8f5e9, #c8e6c9); margin:0; padding:20px; text-align:center; color:#333;}
+  h1 {color:#2e7d32; font-size:2.9em; margin:20px 0 10px 0; line-height:1.2; font-weight:bold;}
+  .card {max-width:1100px; margin:30px auto 10px; background:white; padding:50px; border-radius:20px; box-shadow:0 12px 35px rgba(0,0,0,0.15);}
+  .input-row {display:flex; justify-content:center; gap:80px; margin:30px 0 10px 0; flex-wrap:wrap; align-items:center;}
+  .input-group label {display:block; font-size:1.8em; margin-bottom:10px; color:#2e7d32;}
+  input[type="number"] {width:260px; padding:16px; font-size:2.5em; text-align:center; border:6px solid #43a047; border-radius:15px;}
+  button {padding:18px 70px; font-size:1.8em; background:#43a047; color:white; border:none; border-radius:15px; cursor:pointer; margin:15px 10px;}
+  button:hover:not(:disabled) {background:#2e7d32;}
+  button:disabled {background:#a5d6a7; cursor:not-allowed; opacity:0.7;}
+
+  .lists {
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    margin: 55px auto;
+    max-width: 1000px;
+    flex-wrap: wrap;
+  }
+  .list-box {
+    background: #f9fff9;
+    padding: 28px;
+    border-radius: 18px;
+    min-width: 300px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    border-left: 12px solid #66bb6a;
+  }
+  .list-box h2 {
+    margin: 0 0 18px 0;
+    font-size: 2.0em;
+    color: #1b5e20;
+  }
+  .list {
+    font-size: 2.2em;
+    font-weight: bold;
+    min-height: 80px;
+    color: #1b5e20;
+  }
+
+  #currentAction {
+    background:#f9fff9;
+    padding: 34px;
+    margin: 50px auto 75px;
+    border-radius: 15px;
+    font-size: 2.7em;
+    font-weight: bold;
+    color: #1b5e20;
+    max-width: 960px;
+    border-left: 14px solid #66bb6a;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    line-height: 1.45;
+  }
+  .found {color:#2e7d32; font-size:1.5em; font-weight:bold;}
+  .newton-caption {
+    font-size: 1.35em;
+    color: #2e7d32;
+    margin-top: 12px;
+    font-weight: 600;
+  }
+  .footer-note {
+    margin: 60px auto 20px;
+    font-size: 1.3em;
+    color: #1b5e20;
+    font-style: italic;
+    max-width: 900px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Find the Integer Square Root</h1>
+
+  <div style="margin:30px auto;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/39/GodfreyKneller-IsaacNewton-1689.jpg"
+         alt="Sir Isaac Newton"
+         style="width:260px; border-radius:20px; border:8px solid white; box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+    <div class="newton-caption">Sir Isaac Newton (1643–1727)</div>
+  </div>
+
+  <div class="input-row">
+    <div class="input-group">
+      <label>Enter N</label>
+      <input type="number" id="target" value="539" min="2" max="1000000000">
+    </div>
+  </div>
+
+  <button onclick="startGame()">Start New Search</button>
+
+  <div class="lists">
+    <div class="list-box">
+      <h2>Too Small<br><small style="font-size:0.5em;color:#555;">(k × k < N)</small></h2>
+      <div id="tooSmallList" class="list"></div>
+    </div>
+    <div class="list-box">
+      <h2>Too Big<br><small style="font-size:0.5em;color:#555;">(k × k > N)</small></h2>
+      <div id="tooBigList" class="list"></div>
+    </div>
+  </div>
+
+  <div id="currentAction">Click “Start New Search” to begin…</div>
+
+  <div class="input-row" style="margin:80px auto 20px;">
+    <div class="input-group">
+      <label>Your guess</label>
+      <input type="number" id="guess" min="1" placeholder="?" disabled>
+    </div>
+  </div>
+
+  <button id="submitBtn" onclick="checkGuess()" disabled>Submit Guess</button>
+</div>
+
+<div class="footer-note">
+  Sir Isaac Newton discovered an extraordinarily efficient method (now called “Newton’s method” or the Newton-Raphson method) <br>
+  that finds extremely accurate approximations of square roots (and other roots) using only a few clever iterations of guessing and refining.
+</div>
+
+<script>
+let N;
+let tooSmall = [];
+let tooBig = [];
+
+function startGame() {
+  N = parseInt(document.getElementById("target").value);
+  if (!N || N < 2) return alert("Please enter a number ≥ 2");
+
+  tooSmall = [];
+  tooBig = [];
+  document.getElementById("tooSmallList").textContent = "";
+  document.getElementById("tooBigList").textContent = "";
+  document.getElementById("guess").value = "";
+  document.getElementById("guess").disabled = false;
+  document.getElementById("submitBtn").disabled = false;
+
+  document.getElementById("currentAction").innerHTML = `
+    Find the largest integer <strong>k</strong> such that <strong>k × k ≤ ${N}</strong>`;
+}
+
+function checkGuess() {
+  const input = document.getElementById("guess");
+  const guess = parseInt(input.value);
+  if (isNaN(guess) || guess < 1) {
+    alert("Enter a positive integer guess");
+    return;
+  }
+
+  input.value = "";
+
+  if (tooSmall.includes(guess) || tooBig.includes(guess)) {
+    alert("You already tried this number!");
+    return;
+  }
+
+  const product = guess * guess;
+
+  if (product === N) {
+    finishGame(guess, true);
+    return;
+  }
+  else if (product < N) {
+    tooSmall.push(guess);
+    tooSmall.sort((a,b)=>a-b);
+    renderLists();
+
+    if (tooBig.length > 0 && Math.min(...tooBig) === guess + 1) {
+      finishGame(guess, false);
+      return;
+    }
+
+    document.getElementById("currentAction").innerHTML = `
+      ${guess} × ${guess} = ${product} < ${N} → <span style="color:#d32f2f;">too small</span><br><br>
+      Try a larger number.`;
+  }
+  else {
+    tooBig.push(guess);
+    tooBig.sort((a,b)=>a-b);
+    renderLists();
+
+    if (tooSmall.length > 0 && Math.max(...tooSmall) === guess - 1) {
+      finishGame(Math.max(...tooSmall), false);
+      return;
+    }
+
+    document.getElementById("currentAction").innerHTML = `
+      ${guess} × ${guess} = ${product} > ${N} → <span style="color:#c62828;">too big</span><br><br>
+      Try a smaller number.`;
+  }
+}
+
+// Press Enter to submit
+document.getElementById("guess").addEventListener("keypress", e => {
+  if (e.key === "Enter") checkGuess();
+});
+
+function renderLists() {
+  document.getElementById("tooSmallList").textContent = tooSmall.join("   ");
+  document.getElementById("tooBigList").textContent = tooBig.join("   ");
+}
+
+function finishGame(answer, isPerfect) {
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("guess").disabled = true;
+
+  if (isPerfect) {
+    document.getElementById("currentAction").innerHTML = `
+      <span class="found">Perfect!</span><br><br>
+      ${answer} × ${answer} = ${N}<br><br>
+      The integer square root of ${N} is <strong style="font-size:1.6em;color:#2e7d32;">${answer}</strong>`;
+  } else {
+    document.getElementById("currentAction").innerHTML = `
+      <span class="found">Found it!</span><br><br>
+      ${answer} × ${answer} ≤ ${N} < ${answer + 1} × ${answer + 1}<br><br>
+      The integer square root of ${N} is <strong style="font-size:1.6em;color:#2e7d32;">${answer}</strong>`;
+  }
+}
+</script>
+</body>
+</html>
