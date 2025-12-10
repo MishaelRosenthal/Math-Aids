@@ -13,7 +13,6 @@
   button {padding:20px 80px; font-size:2em; background:#43a047; color:white; border:none; border-radius:15px; cursor:pointer; margin:10px 10px;}
   button:hover:not(:disabled) {background:#2e7d32;}
   button:disabled {background:#a5d6a7; cursor:not-allowed; opacity:0.7;}
-
   .speed-control {
     margin: 20px auto;
     max-width: 900px;
@@ -27,7 +26,6 @@
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none; width: 40px; height: 40px; border-radius: 50%; background: #43a047; cursor: pointer; box-shadow: 0 0 20px rgba(0,0,0,0.3);
   }
-
   #currentAction {
     background:#f9fff9;
     padding: 36px;
@@ -47,7 +45,6 @@
   .prime-text {color:#e91e63; font-size:1.18em; font-weight:bold;}
   .composite-text {color:#c62828;}
   .killer-prime {color:#2e7d32; font-size:1.5em; font-weight:bold;}
-
   /* Extra breathing room before the grid */
   .grid {
     display:grid;
@@ -76,19 +73,22 @@
     z-index:300 !important;
   }
   @keyframes pulse {
-    0%   { transform:scale(1);   box-shadow:0 0 0 rgba(255,152,0,0); }
-    40%  { transform:scale(3.4); box-shadow:0 0 160px #ff9800; }
-    100% { transform:scale(1);   box-shadow:0 0 30px rgba(255,152,0,0.4); }
+    0% { transform:scale(1); box-shadow:0 0 0 rgba(255,152,0,0); }
+    40% { transform:scale(3.4); box-shadow:0 0 160px #ff9800; }
+    100% { transform:scale(1); box-shadow:0 0 30px rgba(255,152,0,0.4); }
   }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Primality Testing Using Eratosthenes’s Sieve</h1>
-  
-  <img src="https://igonzalez1.weebly.com/uploads/2/5/7/5/25754627/901195.jpg" 
-       alt="Eratosthenes of Cyrene" 
+ 
+  <img src="https://igonzalez1.weebly.com/uploads/2/5/7/5/25754627/901195.jpg"
+       alt="Eratosthenes of Cyrene"
        style="width:280px; border-radius:20px; border:8px solid white; box-shadow:0 8px 30px rgba(0,0,0,0.25); margin:20px auto; display:block;">
+  <div style="font-size:1.35em; color:#2e7d32; font-weight:600; margin-top:12px;">
+    Eratosthenes of Cyrene<br>(c. 276 BC – c. 194 BC)
+  </div>
 
   <div class="input-row">
     <div class="input-group">
@@ -96,66 +96,53 @@
       <input type="number" id="target" value="539" min="10" max="10000">
     </div>
   </div>
-
   <button onclick="startSieve()">Start New Test</button>
   <button id="nextBtn" onclick="nextStep()" disabled>Next Step</button>
-
   <div class="speed-control">
     <label for="speed">Animation Speed: <span id="speedValue">Medium</span></label>
     <input type="range" id="speed" min="1" max="5" value="3" step="1">
   </div>
-
   <div id="currentAction">Click “Start New Test” to begin…</div>
-
   <div id="grid" class="grid"></div>
 </div>
-
 <script>
 let targetNum, checkUpTo;
 let sieve = [];
 let currentPrime = 2;
 let phase = 0;
-
 const speedMap = {
   1: { base: 1200, step: 1400, label: "Very Slow" },
-  2: { base: 900,  step: 1100, label: "Slow" },
-  3: { base: 700,  step: 800,  label: "Medium" },
-  4: { base: 400,  step: 500,  label: "Fast" },
-  5: { base: 150,  step: 200,  label: "Lightning" }
+  2: { base: 900, step: 1100, label: "Slow" },
+  3: { base: 700, step: 800, label: "Medium" },
+  4: { base: 400, step: 500, label: "Fast" },
+  5: { base: 150, step: 200, label: "Lightning" }
 };
-
 function getSpeed() {
   const level = document.getElementById("speed").value;
   document.getElementById("speedValue").textContent = speedMap[level].label;
   return speedMap[level];
 }
 document.getElementById("speed").addEventListener("input", getSpeed);
-
 function startSieve() {
   targetNum = parseInt(document.getElementById("target").value);
   if (!targetNum || targetNum < 10) return alert("Enter a number ≥ 10");
-
   phase = 0;
   currentPrime = 2;
   document.getElementById("grid").innerHTML = "";
   document.getElementById("nextBtn").disabled = false;
-
   let k = 2;
   while (k * k <= targetNum) k++;
   checkUpTo = k - 1;
-
-  document.getElementById("currentAction").innerHTML = 
+  document.getElementById("currentAction").innerHTML =
     `First, find the smallest number <strong>k</strong> such that <strong>k × k > ${targetNum}</strong><br>
      <span class="highlight-k">Answer: k = ${k}</span><br>
      Click “Next Step” to find all the primes lesser than ${k}…`;
 }
-
 function nextStep() {
   if (phase === 0) {
     const grid = document.getElementById("grid");
     sieve = Array(checkUpTo + 1).fill(true);
     sieve[0] = sieve[1] = false;
-
     for (let i = 2; i <= checkUpTo; i++) {
       const cell = document.createElement("div");
       cell.className = "num";
@@ -163,48 +150,37 @@ function nextStep() {
       cell.id = "n" + i;
       grid.appendChild(cell);
     }
-
     document.getElementById("currentAction").textContent = "Ready! Click “Next Step” to begin";
     phase = 1;
     return;
   }
-
   document.getElementById("nextBtn").disabled = true;
-
   while (currentPrime <= checkUpTo && !sieve[currentPrime]) {
     currentPrime++;
   }
-
   if (currentPrime > checkUpTo) {
-    document.getElementById("currentAction").innerHTML = 
+    document.getElementById("currentAction").innerHTML =
       `<span class="prime-text"><strong>${targetNum} is prime</strong></span>, it has no divisors among 2–${checkUpTo}!`;
     return;
   }
-
   const p = currentPrime;
   const speed = getSpeed();
-
   if (targetNum % p === 0) {
-    document.getElementById("currentAction").innerHTML = 
+    document.getElementById("currentAction").innerHTML =
       `<strong>${targetNum} is divisible by <span class="killer-prime">${p}</span></strong><br>It is <span class="composite-text">composite</span>.`;
-
     const cell = document.getElementById("n" + p);
     if (cell) {
       cell.classList.add("killer-enlarged");
     }
     return;
   } else {
-    document.getElementById("currentAction").innerHTML = 
+    document.getElementById("currentAction").innerHTML =
       `<strong>${targetNum} is not divisible by ${p}.</strong><br>Cross all the multiples of ${p}.`;
   }
-
   document.getElementById("n" + p).classList.add("current-prime");
-
   let delay = speed.base;
-
   for (let m = p * 2; m <= checkUpTo; m += p) {
     sieve[m] = false;
-
     setTimeout(() => {
       const cell = document.getElementById("n" + m);
       if (cell) {
@@ -216,7 +192,6 @@ function nextStep() {
     }, delay);
     delay += speed.step;
   }
-
   setTimeout(() => {
     const cell = document.getElementById("n" + p);
     cell.classList.remove("current-prime");
