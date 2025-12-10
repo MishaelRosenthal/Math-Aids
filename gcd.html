@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<head>
 <meta charset="UTF-8">
 <title>Euclid GCD & LCM Algorithm</title>
 <style>
@@ -15,105 +16,90 @@
   .step {background:#f9fff9; padding:28px; margin:30px auto; border-radius:15px; font-size:1.75em; max-width:820px; border-left:14px solid #66bb6a; text-align:left; display:none; box-shadow:0 4px 12px rgba(0,0,0,0.06);}
   .step strong {color:#1b5e20;}
   #euclid-img {width:240px; margin:10px auto 10px; border-radius:20px; border:8px solid white; box-shadow:0 8px 25px rgba(0,0,0,0.25);}
-
   #finalResult {
     font-size:3.2em; font-weight:bold; color:#a855f7; line-height:1.5;
     margin:60px 0 30px 0; padding:40px; background:#f3e8ff;
     border-radius:20px; border-left:14px solid #a855f7; display:none;
   }
-
   #lcmResult {
     font-size:3.2em; font-weight:bold; color:#1565c0; line-height:1.5;
     margin:30px 0 60px 0; padding:40px; background:#e3f2fd;
     border-radius:20px; border-left:14px solid #42a5f5; display:none;
   }
-
   .remainder, .nextpair {color:#2e7d32; font-weight:bold;}
 </style>
 </head>
 <body>
-
 <div class="card">
   <h1>Euclid GCD Algorithm<br>for Finding the<br>Greatest Common Divisor (Factor)</h1>
-
+  
   <img id="euclid-img" src="https://www.worldhistory.org/uploads/images/4139.jpg?v=1747264448-0" alt="Euclid of Alexandria">
+  
+  <div style="font-size:1.35em; color:#2e7d32; font-weight:600; margin-top:12px;">
+    Euclid of Alexandria<br>(c. 325 BC – c. 270 BC)
+  </div>
 
   <div class="input-row">
     <div class="input-group"><label>First number</label><input type="number" id="a" value="48" min="1"></div>
     <div class="input-group"><label>Second number</label><input type="number" id="b" value="18" min="1"></div>
   </div>
-
   <button onclick="findGCD()">Show the Steps</button>
-
   <div id="steps"></div>
   <div id="finalResult" style="display:none;"></div>
   <div id="lcmResult" style="display:none;"></div>
 </div>
-
 <script>
 function findGCD() {
   let originalA = parseInt(document.getElementById("a").value);
   let originalB = parseInt(document.getElementById("b").value);
-
   if (isNaN(originalA) || isNaN(originalB) || originalA <= 0 || originalB <= 0) {
     alert("Please enter two positive numbers!");
     return;
+    return;
   }
-
   let x = originalA;
   let y = originalB;
   if (x < y) [x, y] = [y, x];
-
   document.getElementById("steps").innerHTML = "";
   document.getElementById("finalResult").style.display = "none";
   document.getElementById("lcmResult").style.display = "none";
-
   let step = 1;
   let isFirstStep = true;
-
   while (y !== 0) {
-    let quotient  = Math.floor(x / y);
+    let quotient = Math.floor(x / y);
     let remainder = x % y;
-
     if (remainder !== 0) {
       let text = "";
       if (isFirstStep) { text = `Divide the larger number by the smaller one.<br>`; isFirstStep = false; }
-
       text += `<strong>Divide ${x} by ${y}:</strong><br>` +
               `${x} = ${y} × ${quotient} + <span class="remainder">${remainder}</span><br>` +
               `• Quotient = ${quotient} (ignored)<br>` +
               `• Remainder = <span class="remainder">${remainder}</span><br>` +
               `Continue the algorithm with the smaller number <span class="nextpair">${y}</span> and the remainder <span class="nextpair">${remainder}</span>.`;
-
       addStep(step++, text);
     } else {
       let text = `<strong>${x} is divisible by ${y} (remainder = 0).</strong><br>` +
                  `Therefore, the Greatest Common Divisor is <strong>${y}</strong>!`;
       addStep(step++, text);
-
       // GCD Result
       let gcdHTML = `${y} is the GCD of ${originalA} and ${originalB}`;
       if (y === 1) gcdHTML += `<br>These two numbers are <strong>coprime</strong>!`;
       document.getElementById("finalResult").innerHTML = gcdHTML;
       document.getElementById("finalResult").style.display = "block";
-
       // LCM Result — exactly the text you asked for
       let lcm = (originalA * originalB) / y;
-      document.getElementById("lcmResult").innerHTML = 
+      document.getElementById("lcmResult").innerHTML =
         `<strong>${lcm}</strong> is the LCM (Least Common Multiple) of ${originalA} and ${originalB}:<br>` +
         `(${originalA} × ${originalB}) ÷ ${y} = ${lcm}`;
       document.getElementById("lcmResult").style.display = "block";
-
       break;
     }
     x = y;
     y = remainder;
   }
-
   const steps = document.getElementsByClassName("step");
   for (let s of steps) s.style.display = "block";
 }
-
 function addStep(n, text) {
   const div = document.createElement("div");
   div.className = "step";
@@ -121,10 +107,8 @@ function addStep(n, text) {
   document.getElementById("steps").appendChild(div);
 }
 </script>
-
 <p style="margin-top:80px; font-size:1.6em; color:#555;">
   Euclid’s Algorithm — invented over 2,300 years ago<br>and still the fastest method today!
 </p>
-
 </body>
 </html>
