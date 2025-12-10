@@ -21,29 +21,28 @@
 </style>
 </head>
 <body>
-
 <div class="card">
   <h1>The Common Factors of Multiple Numbers Using Their GCD</h1>
-
+  
   <img id="euclid-img" src="https://www.worldhistory.org/uploads/images/4139.jpg?v=1747264448-0" alt="Euclid of Alexandria">
+  
+  <div style="font-size:1.35em; color:#2e7d32; font-weight:600; margin-top:12px;">
+    Euclid of Alexandria<br>(c. 325 BC – c.270 BC)
+  </div>
 
   <p style="font-size:2em; margin:30px 0;">Enter numbers separated by commas (example: 288, 432, 216, 180, 108)</p>
   <input type="text" id="numbers" placeholder="288, 432, 216, 180, 108" value="288, 432, 216, 180, 108">
-
   <button onclick="findGCDMultiple()">Show the Steps</button>
-
   <div id="steps"></div>
   <div id="finalResult" style="display:none;"></div>
   <div id="commonFactors" style="display:none;"></div>
 </div>
-
 <script>
 function gcd(a, b) {
   a = Math.abs(a); b = Math.abs(b);
   while (b) { let t = b; b = a % b; a = t; }
   return a;
 }
-
 function getFactors(n) {
   let factors = [];
   for (let i = 1; i <= n; i++) {
@@ -51,49 +50,38 @@ function getFactors(n) {
   }
   return factors;
 }
-
 function findGCDMultiple() {
   const input = document.getElementById("numbers").value.trim();
   if (!input) { alert("Please enter some numbers!"); return; }
-
   const nums = input.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n > 0);
   if (nums.length < 2) { alert("Please enter at least two numbers!"); return; }
-
   document.getElementById("steps").innerHTML = "";
   document.getElementById("finalResult").style.display = "none";
   document.getElementById("commonFactors").style.display = "none";
-
   let currentGCD = gcd(nums[0], nums[1]);
   let step = 1;
-
   addStep(step++,
     `Find the GCD of the first pair<br>` +
     `<strong>${currentGCD}</strong> is the GCD of <strong>${nums[0]}</strong> and <strong>${nums[1]}</strong>`
   );
-
   for (let i = 2; i < nums.length; i++) {
     let previousGCD = currentGCD;
     currentGCD = gcd(currentGCD, nums[i]);
-
     addStep(step++,
       `<strong>${currentGCD}</strong> is GCD of <strong>${previousGCD}</strong> and <strong>${nums[i]}</strong> (the next number)`
     );
   }
-
   document.getElementById("finalResult").innerHTML =
     `<strong>${currentGCD}</strong> is the GCD of all numbers:<br>${nums.join(', ')}` +
     (currentGCD === 1 ? `<br><br>These numbers are <strong>coprime</strong> as a group!` : "");
   document.getElementById("finalResult").style.display = "block";
-
   const factors = getFactors(currentGCD);
   document.getElementById("commonFactors").innerHTML =
     `All common factors of the numbers are:<br>` +
     `<strong>${factors.join(', ')}</strong>`;
   document.getElementById("commonFactors").style.display = "block";
-
   document.querySelectorAll(".step").forEach(s => s.style.display = "block");
 }
-
 function addStep(n, text) {
   const div = document.createElement("div");
   div.className = "step";
@@ -101,10 +89,8 @@ function addStep(n, text) {
   document.getElementById("steps").appendChild(div);
 }
 </script>
-
 <p style="margin-top:80px; font-size:1.6em; color:#555;">
   Euclid’s Algorithm works beautifully for any number of integers!
 </p>
-
 </body>
 </html>
