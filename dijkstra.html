@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Algorithm Visualization</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background: #f0f0f0; 
+            text-align: center;
+        }
+        h1 {
+            font-size: 48px;
+            margin: 30px 0 10px;
+            color: #333;
+        }
+        .subtitle {
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: #e91e63;
+            font-style: italic;
+        }
+        canvas { 
+            display: block; 
+            background: white; 
+            margin: 20px auto; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.3); 
+            border-radius: 10px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background: #3399ff;
+            color: white;
+        }
+        button:hover { background: #2277cc; }
+        select, input[type="range"] { 
+            padding: 10px; 
+            font-size: 18px; 
+            margin: 0 10px;
+        }
+        #info { 
+            font-size: 20px; 
+            margin: 15px; 
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>To Jack Dykstra, Gal’s secret buddy ❤️</h1>
+    <div class="subtitle">A little gift: Dijkstra's Algorithm Visualization</div>
+
+    <div class="controls">
+        <button id="run">Run Dijkstra's Algorithm</button>
+        <button id="reset">Reset</button>
+        <label>Start Node: <select id="start"></select></label>
+        <label>Speed (ms): <input type="range" id="speed" min="200" max="3000" value="1000" step="200"></label>
+    </div>
+    <div id="info">Select a start node and click "Run" to watch the algorithm in action.</div>
+    <canvas id="canvas" width="1000" height="700"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startSelect = document.getElementById('start');
+        const runBtn = document.getElementById('run');
+        const resetBtn = document.getElementById('reset');
+        const speedSlider = document.getElementById('speed');
+        const info = document.getElementById('info');
+
+        // Larger graph with 10 nodes
+        const nodes = [
+            { id: 'A', x: 150, y: 250 },
+            { id: 'B', x: 300, y: 100 },
+            { id: 'C', x: 300, y: 400 },
+            { id: 'D', x: 500, y: 200 },
+            { id: 'E', x: 500, y: 400 },
+            { id: 'F', x: 700, y: 100 },
+            { id: 'G', x: 700, y: 300 },
+            { id: 'H', x: 700, y: 500 },
+            { id: 'I', x: 850, y: 250 },
+            { id: 'J', x: 450, y: 550 }
+        ];
+
+        // Edges with weights
+        const edges = [
+            { from: 'A', to: 'B', weight: 5 },
+            { from: 'A', to: 'C', weight: 3 },
+            { from: 'B', to: 'D', weight: 8 },
+            { from: 'B', to: 'F', weight: 12 },
+            { from: 'C', to: 'D', weight: 4 },
+            { from: 'C', to: 'J', weight: 7 },
+            { from: 'D', to: 'E', weight: 6 },
+            { from: 'D', to: 'G', weight: 9 },
+            { from: 'E', to: 'H', weight: 5 },
+            { from: 'E', to: 'J', weight: 10 },
+            { from: 'F', to: 'G', weight: 3 },
+            { from: 'F', to: 'I', weight: 7 },
+            { from: 'G', to: 'H', weight: 4 },
+            { from: 'G', to: 'I', weight: 6 },
+            { from: 'H', to: 'I', weight: 8 },
+            { from: 'H', to: 'J', weight: 11 }
+        ];
+
+        // Some edges will be curved (defined by control points for quadratic Bézier)
+        const curvedEdges = [
+            { from: 'B', to: 'F', cpX: 500, cpY: 50 },   // curve up
+            { from: 'C', to: 'J', cpX: 400, cpY: 500 },  // curve down-left
+            { from: 'D', to: 'G', cpX: 600, cpY: 150 },  // curve up-right
+            { from: 'E', to: 'J', cpX: 600, cpY: 550 },  // curve down-right
+            { from: 'F', to: 'I', cpX: 800, cpY: 50 }    // curve up-right
+        ];
+
+        // Build adjacency list (undirected)
+        const graph = {};
+        nodes.forEach(node => graph[node.id] = []);
+        edges.forEach(edge => {
+            graph[edge.from].push({ node: edge.to, weight: edge.weight });
+            graph[edge.to].push({ node: edge.from, weight: edge.weight });
+        });
+
+        let distances = {};
+        let previous = {};
+        let visited = new Set();
+        let current = null;
+        let shortestPaths = {};
+        let animationInterval = null;
+
+        function isCurved(from, to) {
+            return curvedEdges.find(e => 
+                (e.from === from && e.to === to) || (e.from === to && e.to === from)
+            );
+        }
+
+        function getControlPoint(from, to) {
+            const edge = curvedEdges.find(e => 
+                (e.from === from && e.to === to) || (e.from === to && e.to === from)
+            );
+            return edge ? { cpX: edge.cpX, cpY: edge.cpY } : null;
+        }
+
+        function drawEdge(fromNode, toNode, weight, isShortest = false) {
+            ctx.strokeStyle = isShortest ? '#00cc00' : '#aaa';
+            ctx.lineWidth = isShortest ? 7 : 3;
+
+            const cp = isCurved(fromNode.id, toNode.id) ? getControlPoint(fromNode.id, toNode.id) : null;
+
+            ctx.beginPath();
+            if (cp) {
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.quadraticCurveTo(cp.cpX, cp.cpY, toNode.x, toNode.y);
+            } else {
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.lineTo(toNode.x, toNode.y);
+            }
+            ctx.stroke();
+
+            // Weight label near midpoint
+            let midX, midY;
+            if (cp) {
+                // Approximate midpoint on quadratic curve
+                midX = (fromNode.x + 2*cp.cpX + toNode.x) / 4;
+                midY = (fromNode.y + 2*cp.cpY + toNode.y) / 4;
+            } else {
+                midX = (fromNode.x + toNode.x) / 2;
+                midY = (fromNode.y + toNode.y) / 2;
+            }
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(weight, midX + 8, midY - 8);
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all edges
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                const key = [edge.from, edge.to].sort().join('-');
+                drawEdge(fromNode, toNode, edge.weight, !!shortestPaths[key]);
+            });
+
+            // Draw nodes
+            nodes.forEach(node => {
+                // Node color
+                if (visited.has(node.id)) {
+                    ctx.fillStyle = '#999';
+                } else if (current === node.id) {
+                    ctx.fillStyle = '#ff4444'; // current = red
+                } else {
+                    ctx.fillStyle = '#4488ff';
+                }
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 40, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Node label
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.id, node.x, node.y);
+
+                // Distance label
+                if (distances[node.id] !== undefined && distances[node.id] < Infinity) {
+                    ctx.fillStyle = '#000';
+                    ctx.font = '20px Arial';
+                    ctx.fillText(distances[node.id], node.x, node.y + 60);
+                }
+            });
+        }
+
+        function resetVisualization() {
+            distances = {};
+            previous = {};
+            visited.clear();
+            current = null;
+            shortestPaths = {};
+            nodes.forEach(n => distances[n.id] = Infinity);
+            info.textContent = 'Select a start node and click "Run" to watch the algorithm in action.';
+            drawGraph();
+        }
+
+        function runDijkstraStepByStep(startNode) {
+            nodes.forEach(n => {
+                distances[n.id] = Infinity;
+                previous[n.id] = null;
+            });
+            distances[startNode] = 0;
+
+            const unvisited = new Set(nodes.map(n => n.id));
+
+            const step = () => {
+                if (unvisited.size === 0) {
+                    clearInterval(animationInterval);
+                    highlightShortestPaths();
+                    info.textContent = 'Done! Green edges highlight shortest paths from the start node.';
+                    return;
+                }
+
+                // Find unvisited node with smallest distance
+                let minDist = Infinity;
+                let nextNode = null;
+                unvisited.forEach(id => {
+                    if (distances[id] < minDist) {
+                        minDist = distances[id];
+                        nextNode = id;
+                    }
+                });
+
+                current = nextNode;
+                visited.add(nextNode);
+                unvisited.delete(nextNode);
+
+                // Relax neighbors
+                graph[nextNode].forEach(neighbor => {
+                    if (!visited.has(neighbor.node)) {
+                        const alt = distances[nextNode] + neighbor.weight;
+                        if (alt < distances[neighbor.node]) {
+                            distances[neighbor.node] = alt;
+                            previous[neighbor.node] = nextNode;
+                        }
+                    }
+                });
+
+                info.textContent = `Processing node ${nextNode} — current distance: ${distances[nextNode]}`;
+                drawGraph();
+            };
+
+            clearInterval(animationInterval);
+            animationInterval = setInterval(step, parseInt(speedSlider.value));
+            step(); // first step immediately
+        }
+
+        function highlightShortestPaths() {
+            shortestPaths = {};
+            nodes.forEach(node => {
+                if (node.id !== startSelect.value && previous[node.id]) {
+                    let curr = node.id;
+                    while (previous[curr]) {
+                        const prev = previous[curr];
+                        const key = [prev, curr].sort().join('-');
+                        shortestPaths[key] = true;
+                        curr = prev;
+                    }
+                }
+            });
+            drawGraph();
+        }
+
+        // Populate start node dropdown
+        nodes.forEach(node => {
+            const opt = document.createElement('option');
+            opt.value = node.id;
+            opt.textContent = node.id;
+            startSelect.appendChild(opt);
+        });
+        startSelect.value = 'A';
+
+        runBtn.addEventListener('click', () => {
+            resetVisualization();
+            distances[startSelect.value] = 0;
+            runDijkstraStepByStep(startSelect.value);
+        });
+
+        resetBtn.addEventListener('click', resetVisualization);
+
+        speedSlider.addEventListener('input', () => {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                runDijkstraStepByStep(startSelect.value);
+            }
+        });
+
+        resetVisualization();
+    </script>
+</body>
+</html>
