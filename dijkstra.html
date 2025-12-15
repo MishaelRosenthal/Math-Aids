@@ -3,70 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dijkstra's Algorithm Visualization</title>
+    <title>Dijkstra's Algorithm ♡</title>
     <style>
         body { 
             margin: 0; 
-            font-family: Arial, sans-serif; 
-            background: #f0f0f0; 
+            font-family: 'Comic Sans MS', 'Chalkboard', cursive;
+            background: linear-gradient(to bottom, #ffe6f2, #fff0f8);
             text-align: center;
+            color: #d63384;
         }
         h1 {
-            font-size: 48px;
-            margin: 30px 0 10px;
-            color: #333;
+            font-size: 56px;
+            margin: 40px 0 10px;
+            color: #ff69b4;
+            text-shadow: 3px 3px 6px rgba(255,105,180,0.4);
         }
         .subtitle {
-            font-size: 28px;
-            margin-bottom: 30px;
-            color: #e91e63;
+            font-size: 32px;
+            margin-bottom: 40px;
+            color: #ff1493;
             font-style: italic;
+        }
+        .flowers {
+            font-size: 60px;
+            margin: 20px 0;
         }
         canvas { 
             display: block; 
-            background: white; 
-            margin: 20px auto; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.3); 
-            border-radius: 10px;
+            background: #ffffff;
+            margin: 30px auto; 
+            box-shadow: 0 10px 30px rgba(255,105,180,0.3);
+            border: 8px solid #ffb6c1;
+            border-radius: 30px;
         }
         .controls {
-            margin: 20px;
+            margin: 30px;
+            padding: 20px;
+            background: #fff0f8;
+            border-radius: 20px;
+            display: inline-block;
+            box-shadow: 0 5px 15px rgba(255,182,193,0.4);
         }
         button {
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 18px;
+            padding: 14px 28px;
+            margin: 10px;
+            font-size: 22px;
             cursor: pointer;
             border: none;
-            border-radius: 6px;
-            background: #3399ff;
+            border-radius: 50px;
+            background: #ff69b4;
             color: white;
+            box-shadow: 0 4px 10px rgba(255,105,180,0.4);
         }
-        button:hover { background: #2277cc; }
+        button:hover { 
+            background: #ff1493; 
+            transform: scale(1.05);
+        }
         select, input[type="range"] { 
-            padding: 10px; 
-            font-size: 18px; 
-            margin: 0 10px;
+            padding: 12px; 
+            font-size: 20px; 
+            margin: 10px;
+            border-radius: 20px;
+            border: 3px solid #ffb6c1;
         }
         #info { 
-            font-size: 20px; 
-            margin: 15px; 
-            min-height: 30px;
+            font-size: 24px; 
+            margin: 20px;
+            min-height: 40px;
+            color: #d63384;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
+    <div class="flowers">🌸 🌷 🌺 🌼 🌻</div>
     <h1>To Jack Dykstra, Gal’s secret buddy ❤️</h1>
-    <div class="subtitle">A little gift: Dijkstra's Algorithm Visualization</div>
+    <div class="subtitle">A super cute gift: Dijkstra's Shortest Paths Algorithm ♡</div>
+    <div class="flowers">🌷 🌸 🌺 🌼 🌻</div>
 
     <div class="controls">
-        <button id="run">Run Dijkstra's Algorithm</button>
-        <button id="reset">Reset</button>
-        <label>Start Node: <select id="start"></select></label>
-        <label>Speed (ms): <input type="range" id="speed" min="200" max="3000" value="1000" step="200"></label>
+        <button id="run">✨ Run Magic Paths ✨</button>
+        <button id="reset">🔄 Start Over</button><br>
+        <label>Start from: <select id="start"></select></label>
+        <label>Speed: <input type="range" id="speed" min="300" max="3000" value="1200" step="300"></label>
     </div>
-    <div id="info">Select a start node and click "Run" to watch the algorithm in action.</div>
+    <div id="info">Pick a start and press the pink button to see the magic! ♡</div>
     <canvas id="canvas" width="1000" height="700"></canvas>
+    <div class="flowers">🌸 🌷 🌺 🌼 🌻</div>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -77,7 +100,7 @@
         const speedSlider = document.getElementById('speed');
         const info = document.getElementById('info');
 
-        // Larger graph with 10 nodes
+        // 10 cute nodes
         const nodes = [
             { id: 'A', x: 150, y: 250 },
             { id: 'B', x: 300, y: 100 },
@@ -91,7 +114,6 @@
             { id: 'J', x: 450, y: 550 }
         ];
 
-        // Edges with weights
         const edges = [
             { from: 'A', to: 'B', weight: 5 },
             { from: 'A', to: 'C', weight: 3 },
@@ -111,16 +133,14 @@
             { from: 'H', to: 'J', weight: 11 }
         ];
 
-        // Some edges will be curved (defined by control points for quadratic Bézier)
         const curvedEdges = [
-            { from: 'B', to: 'F', cpX: 500, cpY: 50 },   // curve up
-            { from: 'C', to: 'J', cpX: 400, cpY: 500 },  // curve down-left
-            { from: 'D', to: 'G', cpX: 600, cpY: 150 },  // curve up-right
-            { from: 'E', to: 'J', cpX: 600, cpY: 550 },  // curve down-right
-            { from: 'F', to: 'I', cpX: 800, cpY: 50 }    // curve up-right
+            { from: 'B', to: 'F', cpX: 500, cpY: 50 },
+            { from: 'C', to: 'J', cpX: 400, cpY: 500 },
+            { from: 'D', to: 'G', cpX: 600, cpY: 150 },
+            { from: 'E', to: 'J', cpX: 600, cpY: 550 },
+            { from: 'F', to: 'I', cpX: 800, cpY: 50 }
         ];
 
-        // Build adjacency list (undirected)
         const graph = {};
         nodes.forEach(node => graph[node.id] = []);
         edges.forEach(edge => {
@@ -149,8 +169,9 @@
         }
 
         function drawEdge(fromNode, toNode, weight, isShortest = false) {
-            ctx.strokeStyle = isShortest ? '#00cc00' : '#aaa';
-            ctx.lineWidth = isShortest ? 7 : 3;
+            ctx.strokeStyle = isShortest ? '#ff69b4' : '#ffc0cb';
+            ctx.lineWidth = isShortest ? 10 : 5;
+            ctx.lineCap = 'round';
 
             const cp = isCurved(fromNode.id, toNode.id) ? getControlPoint(fromNode.id, toNode.id) : null;
 
@@ -164,10 +185,8 @@
             }
             ctx.stroke();
 
-            // Weight label near midpoint
             let midX, midY;
             if (cp) {
-                // Approximate midpoint on quadratic curve
                 midX = (fromNode.x + 2*cp.cpX + toNode.x) / 4;
                 midY = (fromNode.y + 2*cp.cpY + toNode.y) / 4;
             } else {
@@ -175,15 +194,14 @@
                 midY = (fromNode.y + toNode.y) / 2;
             }
 
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 16px Arial';
-            ctx.fillText(weight, midX + 8, midY - 8);
+            ctx.fillStyle = '#d63384';
+            ctx.font = 'bold 24px Comic Sans MS';
+            ctx.fillText(weight, midX + 10, midY - 10);
         }
 
         function drawGraph() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw all edges
             edges.forEach(edge => {
                 const fromNode = nodes.find(n => n.id === edge.from);
                 const toNode = nodes.find(n => n.id === edge.to);
@@ -191,36 +209,35 @@
                 drawEdge(fromNode, toNode, edge.weight, !!shortestPaths[key]);
             });
 
-            // Draw nodes
             nodes.forEach(node => {
-                // Node color
+                let color = '#ffb6c1';
                 if (visited.has(node.id)) {
-                    ctx.fillStyle = '#999';
+                    color = '#ff99cc';
                 } else if (current === node.id) {
-                    ctx.fillStyle = '#ff4444'; // current = red
-                } else {
-                    ctx.fillStyle = '#4488ff';
+                    color = '#ff69b4';
                 }
 
+                // Draw cute node (pink circle with white border)
+                ctx.fillStyle = color;
                 ctx.beginPath();
-                ctx.arc(node.x, node.y, 40, 0, Math.PI * 2);
+                ctx.arc(node.x, node.y, 50, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ff1493';
+                ctx.lineWidth = 6;
                 ctx.stroke();
 
-                // Node label
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 32px Arial';
+                // Letter inside
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 48px Comic Sans MS';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(node.id, node.x, node.y);
 
-                // Distance label
-                if (distances[node.id] !== undefined && distances[node.id] < Infinity) {
-                    ctx.fillStyle = '#000';
-                    ctx.font = '20px Arial';
-                    ctx.fillText(distances[node.id], node.x, node.y + 60);
+                // Distance
+                if (distances[node.id] < Infinity) {
+                    ctx.fillStyle = '#d63384';
+                    ctx.font = '28px Comic Sans MS';
+                    ctx.fillText(distances[node.id], node.x, node.y + 80);
                 }
             });
         }
@@ -232,7 +249,7 @@
             current = null;
             shortestPaths = {};
             nodes.forEach(n => distances[n.id] = Infinity);
-            info.textContent = 'Select a start node and click "Run" to watch the algorithm in action.';
+            info.textContent = 'Pick a start and press the pink button to see the magic! ♡';
             drawGraph();
         }
 
@@ -249,11 +266,10 @@
                 if (unvisited.size === 0) {
                     clearInterval(animationInterval);
                     highlightShortestPaths();
-                    info.textContent = 'Done! Green edges highlight shortest paths from the start node.';
+                    info.textContent = 'Yay! All done! The bright pink paths are the shortest ones ♡';
                     return;
                 }
 
-                // Find unvisited node with smallest distance
                 let minDist = Infinity;
                 let nextNode = null;
                 unvisited.forEach(id => {
@@ -267,7 +283,6 @@
                 visited.add(nextNode);
                 unvisited.delete(nextNode);
 
-                // Relax neighbors
                 graph[nextNode].forEach(neighbor => {
                     if (!visited.has(neighbor.node)) {
                         const alt = distances[nextNode] + neighbor.weight;
@@ -278,13 +293,13 @@
                     }
                 });
 
-                info.textContent = `Processing node ${nextNode} — current distance: ${distances[nextNode]}`;
+                info.textContent = `Visiting ${nextNode} ♡ Distance: ${distances[nextNode]}`;
                 drawGraph();
             };
 
             clearInterval(animationInterval);
             animationInterval = setInterval(step, parseInt(speedSlider.value));
-            step(); // first step immediately
+            step();
         }
 
         function highlightShortestPaths() {
@@ -303,7 +318,6 @@
             drawGraph();
         }
 
-        // Populate start node dropdown
         nodes.forEach(node => {
             const opt = document.createElement('option');
             opt.value = node.id;
