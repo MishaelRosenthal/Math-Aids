@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Divisibility Crush - Professional</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 10px;
+            touch-action: manipulation;
+        }
+
+        #header-bar {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 500px;
+            background-color: #34495e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            gap: 15px;
+        }
+
+        .slider-label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bdc3c7; }
+        input[type=range] { flex-grow: 1; cursor: pointer; accent-color: #2ecc71; }
+
+        .stat-box { text-align: center; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bdc3c7; }
+        .stat-value { font-size: 20px; color: #f1c40f; display: block; margin-top: 2px; font-variant-numeric: tabular-nums; }
+       
+        #timer.danger { color: #e74c3c; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { transform: scale(1.1); } }
+        
+        button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #27ae60;
+        }
+        
+        #game-board-container { position: relative; width: 100%; max-width: 500px; margin-bottom: 20px; }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 1.5%;
+            background-color: #34495e;
+            padding: 2%;
+            border-radius: 10px;
+            aspect-ratio: 1/1;
+            touch-action: none;
+        }
+
+        #game-over-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(44, 62, 80, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #game-over-overlay.visible { opacity: 1; pointer-events: all; }
+
+        .tile {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: clamp(10px, 3.2vw, 18px);
+            font-weight: bold;
+            filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.4));
+            user-select: none;
+        }
+
+        /* Harmonized Shape Definitions */
+        .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background-color: #e74c3c; }
+        .shape-4 { clip-path: inset(5% round 10%); background-color: #95a5a6; }
+        .shape-5 { clip-path: polygon(50% 5%, 95% 38%, 82% 95%, 18% 95%, 5% 38%); background-color: #3498db; }
+        .shape-6 { clip-path: polygon(25% 5%, 75% 5%, 95% 50%, 75% 95%, 25% 95%, 5% 50%); background-color: #2ecc71; }
+        .shape-7 { clip-path: polygon(50% 5%, 90% 25%, 95% 65%, 75% 95%, 25% 95%, 5% 65%, 10% 25%); background-color: #f1c40f; color: #2c3e50; }
+        .shape-8 { clip-path: polygon(30% 5%, 70% 5%, 95% 30%, 95% 70%, 70% 95%, 30% 95%, 5% 70%, 5% 30%); background-color: #e67e22; }
+        .shape-9 { clip-path: polygon(50% 5%, 83% 15%, 95% 43%, 94% 78%, 68% 95%, 32% 95%, 6% 78%, 5% 43%, 17% 15%); background-color: #9b59b6; }
+        .shape-10 { clip-path: polygon(50% 5%, 80% 12%, 95% 35%, 95% 65%, 80% 88%, 50% 95%, 20% 88%, 5% 65%, 5% 35%, 20% 12%); background-color: #fd79a8; }
+        
+        .matched { animation: pop 0.3s forwards ease-in-out; }
+        @keyframes pop { 100% { transform: scale(0); opacity: 0; } }
+        .hint { animation: hint-pulse 1s infinite alternate; }
+        @keyframes hint-pulse { 100% { filter: brightness(1.5); } }
+
+        #instructions {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 500px;
+            color: #bdc3c7;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        #instructions h3 { margin: 15px 0 5px 0; color: white; font-size: 18px; }
+        #instructions h3:first-child { margin-top: 0; }
+        #instructions p { margin: 5px 0; }
+        #instructions ul { margin: 10px 0 0 0; padding-left: 0; list-style: none; }
+        #instructions li { margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        #instructions strong { color: #f1c40f; }
+
+        /* Mini-shape styles for instructions - now perfectly centered like table cells */
+        .mini-example {
+            width: 32px;
+            height: 32px;
+            aspect-ratio: 1/1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            filter: drop-shadow(0px 2px 1px rgba(0,0,0,0.4));
+            flex-shrink: 0;
+        }
+
+        #table-container {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 500px;
+            overflow-x: auto;
+        }
+        .m-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 10px; min-width: 440px; }
+        .m-cell { aspect-ratio: 1/1; display: flex; justify-content: center; align-items: center; text-align: center; font-size: 11px; font-weight: bold; color: white; filter: drop-shadow(0px 2px 1px rgba(0,0,0,0.4)); }
+    </style>
+</head>
+<body>
+    <h1>Divisibility Crush</h1>
+    <div id="header-bar">
+        <div class="stats-row">
+            <div class="stat-box">Score<span class="stat-value" id="score">0</span></div>
+            <div class="stat-box">Time<span class="stat-value" id="timer">02:00</span></div>
+            <div class="stat-box">Best<span class="stat-value" id="high-score">0</span></div>
+            <button onclick="startGame()">New Game</button>
+        </div>
+        <div class="slider-row">
+            <div class="slider-label">Maximal number of vertices: <span id="max-val" style="color:#f1c40f">10</span></div>
+            <input type="range" id="shape-slider" min="6" max="10" value="10" oninput="handleSliderChange(this.value)">
+        </div>
+    </div>
+
+    <div id="game-board-container">
+        <div id="game-board"></div>
+        <div id="game-over-overlay">Time's Up!<div style="font-size:20px" id="final-score"></div></div>
+    </div>
+
+    <div id="instructions">
+        <h3>Objective</h3>
+        <p>Get the highest score in two minutes!</p>
+        
+        <h3>How to Play</h3>
+        <p>Swipe a number to swap it with an adjacent tile.</p>
+        <p><strong>Maximal number of vertices:</strong> Use the slider to adjust game complexity by adding or removing higher-order shapes.</p>
+        <p><strong>Scoring:</strong> Points equal the total number of vertices in the match (e.g., matching 4 pentagons wins you 20 points).</p>
+
+        <ul id="dynamic-shapes"></ul>
+    </div>
+
+    <div id="table-container">
+        <h4 style="margin:0 0 12px 0; font-size: 11px; text-transform: uppercase; color: #bdc3c7;">Divisor Reference Table</h4>
+        <div id="multiplication-table"></div>
+    </div>
+
+    <script>
+        const SIZE = 8;
+        const GAME_TIME = 120;
+        const SHAPE_NAMES = {
+            3: "Triangles", 4: "Squares", 5: "Pentagons", 6: "Hexagons",
+            7: "Heptagons", 8: "Octagons", 9: "Nonagons", 10: "Decagons"
+        };
+        
+        let activeMax = 10;
+        let activeDivisors = [3, 4, 5, 6, 7, 8, 9, 10];
+        let currentPools = {};
+        
+        let board = [], score = 0, highScore = 0, isProcessing = false, gameActive = false, timeExpired = false;
+        let timeLeft = GAME_TIME, countdown = null, hintTimer = null;
+        let dragR = null, dragC = null, startX = 0, startY = 0;
+
+        function handleSliderChange(val) {
+            activeMax = parseInt(val);
+            document.getElementById('max-val').textContent = activeMax;
+            activeDivisors = [];
+            for(let i = 3; i <= activeMax; i++) activeDivisors.push(i);
+            
+            updatePools(); 
+            updateBulletInstructions();
+            updateMultiplicationTable();
+            startGame();
+        }
+
+        function updateBulletInstructions() {
+            const list = document.getElementById('dynamic-shapes');
+            list.innerHTML = '';
+            activeDivisors.forEach(d => {
+                const li = document.createElement('li');
+                const pool = currentPools[d];
+                const exampleVal = (pool && pool.length > 0) ? pool[0] : d;
+                
+                li.innerHTML = `
+                    <span>• <strong>${SHAPE_NAMES[d]} (${d} vertices):</strong></span>
+                    <div class="mini-example shape-${d}">${exampleVal}</div>
+                    <span>e.g. ${d}, ${d*2}, ${d*3}...</span>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function getDiv(n) {
+            if (!n) return null;
+            for (let i = activeDivisors.length - 1; i >= 0; i--) {
+                let d = activeDivisors[i];
+                if (n % d === 0) return d;
+            }
+            return null;
+        }
+
+        function updatePools() {
+            currentPools = {};
+            activeDivisors.forEach(d => currentPools[d] = []);
+            const tableNumbers = new Set();
+            activeDivisors.forEach(d => {
+                for (let i = 1; i <= 10; i++) tableNumbers.add(d * i);
+            });
+            tableNumbers.forEach(n => {
+                const hDiv = getDiv(n);
+                if (hDiv && currentPools[hDiv]) currentPools[hDiv].push(n);
+            });
+        }
+
+        function updateMultiplicationTable() {
+            const container = document.getElementById('multiplication-table');
+            container.innerHTML = '';
+            activeDivisors.forEach(d => {
+                const row = document.createElement('div');
+                row.className = 'm-row';
+                for (let i = 1; i <= 10; i++) {
+                    const val = d * i;
+                    const cell = document.createElement('div');
+                    const shapeDiv = getDiv(val);
+                    cell.className = `m-cell shape-${shapeDiv}`;
+                    cell.textContent = val;
+                    row.appendChild(cell);
+                }
+                container.appendChild(row);
+            });
+        }
+
+        function getRandom() {
+            const base = activeDivisors[Math.floor(Math.random() * activeDivisors.length)];
+            const pool = currentPools[base];
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        function startGame() {
+            score = 0; timeLeft = GAME_TIME; gameActive = true; isProcessing = false; timeExpired = false;
+            document.getElementById('score').textContent = score;
+            document.getElementById('game-over-overlay').classList.remove('visible');
+            clearInterval(countdown);
+            countdown = setInterval(tick, 1000);
+            initBoard();
+            updateTimerDisplay();
+        }
+
+        function tick() {
+            timeLeft--;
+            updateTimerDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                timeExpired = true; 
+                if (!isProcessing) endGame(); 
+            }
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.max(0, Math.floor(timeLeft / 60)).toString().padStart(2, '0');
+            const s = Math.max(0, (timeLeft % 60)).toString().padStart(2, '0');
+            const el = document.getElementById('timer');
+            el.textContent = `${m}:${s}`;
+            el.className = timeLeft <= 10 ? 'stat-value danger' : 'stat-value';
+        }
+
+        function endGame() {
+            gameActive = false; clearTimeout(hintTimer);
+            if (score > highScore) { highScore = score; document.getElementById('high-score').textContent = highScore; }
+            document.getElementById('final-score').textContent = `Final Score: ${score}`;
+            document.getElementById('game-over-overlay').classList.add('visible');
+        }
+
+        function initBoard() {
+            const boardEl = document.getElementById('game-board');
+            boardEl.innerHTML = '';
+            board = [];
+            for (let r = 0; r < SIZE; r++) {
+                board[r] = [];
+                for (let c = 0; c < SIZE; c++) {
+                    let n;
+                    do { n = getRandom(); board[r][c] = n; }
+                    while (isImmediateMatch(r, c));
+                }
+            }
+            renderBoard();
+        }
+
+        function isImmediateMatch(r, c) {
+            const d = getDiv(board[r][c]);
+            if (c >= 2 && getDiv(board[r][c-1]) === d && getDiv(board[r][c-2]) === d) return true;
+            if (r >= 2 && getDiv(board[r-1][c]) === d && getDiv(board[r-2][c]) === d) return true;
+            return false;
+        }
+
+        function renderBoard(offsets = null) {
+            const boardEl = document.getElementById('game-board');
+            if (boardEl.children.length === 0) {
+                for (let r = 0; r < SIZE; r++) {
+                    for (let c = 0; c < SIZE; c++) {
+                        const t = document.createElement('div');
+                        t.className = 'tile'; t.dataset.r = r; t.dataset.c = c;
+                        t.addEventListener('pointerdown', startSwipe);
+                        t.addEventListener('pointerup', endSwipe);
+                        boardEl.appendChild(t);
+                    }
+                }
+            }
+            const tiles = document.querySelectorAll('.tile');
+            const firstTile = document.querySelector('.tile');
+            const dropDist = firstTile ? firstTile.offsetHeight + (parseFloat(window.getComputedStyle(boardEl).gap) || 0) : 0;
+            
+            tiles.forEach(t => {
+                const r = t.dataset.r, c = t.dataset.c, v = board[r][c];
+                t.style.transition = 'none';
+                if (v) {
+                    t.textContent = v;
+                    t.className = `tile shape-${getDiv(v)}`;
+                    if (offsets && offsets[r][c] > 0) t.style.transform = `translateY(-${offsets[r][c] * dropDist}px)`;
+                    else t.style.transform = 'translateY(0)';
+                } else { t.textContent = ''; t.className = 'tile'; }
+            });
+            if (offsets) {
+                boardEl.offsetHeight; // force reflow
+                tiles.forEach(t => {
+                    const r = t.dataset.r, c = t.dataset.c;
+                    if (offsets[r][c] > 0) {
+                        t.style.transition = 'transform 0.4s ease-in';
+                        t.style.transform = 'translateY(0)';
+                    }
+                });
+            }
+        }
+
+        function startSwipe(e) {
+            if (!gameActive || isProcessing || timeExpired) return;
+            dragR = parseInt(this.dataset.r); dragC = parseInt(this.dataset.c);
+            startX = e.clientX; startY = e.clientY;
+            this.setPointerCapture(e.pointerId);
+            document.querySelectorAll('.hint').forEach(h => h.classList.remove('hint'));
+        }
+
+        function endSwipe(e) {
+            if (dragR === null) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+            let tr = dragR, tc = dragC;
+            if (Math.abs(dx) > Math.abs(dy)) tc += dx > 0 ? 1 : -1;
+            else tr += dy > 0 ? 1 : -1;
+            if (tr >= 0 && tr < SIZE && tc >= 0 && tc < SIZE) {
+                isProcessing = true;
+                const r1 = dragR, c1 = dragC, r2 = tr, c2 = tc;
+                swap(r1, c1, r2, c2); renderBoard();
+                let best = findSingleBestMatch();
+                if (best.score > 0) processQueue(best);
+                else {
+                    setTimeout(() => { swap(r1, c1, r2, c2); renderBoard(); isProcessing = false; resetHint(); }, 400);
+                }
+            }
+            dragR = null;
+        }
+
+        function swap(r1, c1, r2, c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
+
+        function findSingleBestMatch() {
+            let candidates = [];
+            const hLines = [];
+            for (let r = 0; r < SIZE; r++) {
+                let len = 1;
+                for (let c = 0; c < SIZE; c++) {
+                    const d = getDiv(board[r][c]);
+                    const next = (c < SIZE - 1) ? getDiv(board[r][c+1]) : null;
+                    if (d && d === next) len++;
+                    else {
+                        if (len >= 3) {
+                            let coords = [];
+                            for(let i=0; i<len; i++) coords.push(`${r},${c-i}`);
+                            hLines.push({ coords, div: d, score: len * d });
+                        }
+                        len = 1;
+                    }
+                }
+            }
+            const vLines = [];
+            for (let c = 0; c < SIZE; c++) {
+                let len = 1;
+                for (let r = 0; r < SIZE; r++) {
+                    const d = getDiv(board[r][c]);
+                    const next = (r < SIZE - 1) ? getDiv(board[r+1][c]) : null;
+                    if (d && d === next) len++;
+                    else {
+                        if (len >= 3) {
+                            let coords = [];
+                            for(let i=0; i<len; i++) coords.push(`${r-i},${c}`);
+                            vLines.push({ coords, div: d, score: len * d });
+                        }
+                        len = 1;
+                    }
+                }
+            }
+            const squares = [];
+            for (let r = 0; r < SIZE - 1; r++) {
+                for (let c = 0; c < SIZE - 1; c++) {
+                    const d = getDiv(board[r][c]);
+                    if (d && d === getDiv(board[r+1][c]) && d === getDiv(board[r][c+1]) && d === getDiv(board[r+1][c+1])) {
+                        squares.push({ coords: [`${r},${c}`, `${r+1},${c}`, `${r},${c+1}`, `${r+1},${c+1}`], div: d, score: 4 * d });
+                    }
+                }
+            }
+            const intersections = [];
+            hLines.forEach(h => {
+                if (h.coords.length !== 3) return;
+                vLines.forEach(v => {
+                    if (v.coords.length !== 3 || v.div !== h.div) return;
+                    let shared = h.coords.filter(c => v.coords.includes(c));
+                    if (shared.length === 1) {
+                        const unique = new Set([...h.coords, ...v.coords]);
+                        if (unique.size === 5) {
+                            const hMid = h.coords[1];
+                            const vMid = v.coords[1];
+                            if (shared[0] === hMid && shared[0] === vMid) return; 
+                            intersections.push({ coords: Array.from(unique), div: h.div, score: 5 * h.div });
+                        }
+                    }
+                });
+            });
+            candidates = [...hLines, ...vLines, ...squares, ...intersections];
+            if (candidates.length === 0) return { score: 0 };
+            return candidates.reduce((prev, curr) => (curr.score > prev.score) ? curr : prev);
+        }
+
+        async function processQueue(match) {
+            const tiles = document.querySelectorAll('.tile');
+            score += match.score; 
+            document.getElementById('score').textContent = score;
+            match.coords.forEach(c => {
+                const [r, col] = c.split(',').map(Number);
+                tiles[r * SIZE + col].classList.add('matched');
+            });
+            await new Promise(r => setTimeout(r, 300));
+            match.coords.forEach(c => { const [r, col] = c.split(',').map(Number); board[r][col] = null; });
+            let offsets = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
+            let nextBoard = Array(SIZE).fill(0).map(() => Array(SIZE).fill(null));
+            for (let c = 0; c < SIZE; c++) {
+                let writePos = SIZE - 1;
+                for (let r = SIZE - 1; r >= 0; r--) {
+                    if (board[r][c]) { nextBoard[writePos][c] = board[r][c]; offsets[writePos][c] = writePos - r; writePos--; }
+                }
+                for (let r = writePos; r >= 0; r--) { nextBoard[r][c] = getRandom(); offsets[r][c] = writePos + 1; }
+            }
+            board = nextBoard;
+            renderBoard(offsets);
+            await new Promise(r => setTimeout(r, 450));
+            let next = findSingleBestMatch();
+            if (next.score > 0) { await processQueue(next); }
+            else { isProcessing = false; if (timeExpired) endGame(); else resetHint(); }
+        }
+
+        function resetHint() {
+            clearTimeout(hintTimer);
+            if (gameActive && !timeExpired) hintTimer = setTimeout(showHint, 5000);
+        }
+
+        function showHint() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (c < SIZE - 1) {
+                        swap(r, c, r, c + 1); let b = findSingleBestMatch(); swap(r, c, r, c + 1);
+                        if (b.score > 0) return highlight(r, c, r, c + 1);
+                    }
+                    if (r < SIZE - 1) {
+                        swap(r, c, r + 1, c); let b = findSingleBestMatch(); swap(r, c, r + 1, c);
+                        if (b.score > 0) return highlight(r, c, r + 1, c);
+                    }
+                }
+            }
+            shuffleBoard();
+        }
+
+        function highlight(r1, c1, r2, c2) {
+            const tiles = document.querySelectorAll('.tile');
+            tiles[r1 * SIZE + c1].classList.add('hint');
+            tiles[r2 * SIZE + c2].classList.add('hint');
+        }
+
+        function shuffleBoard() {
+            let nums = board.flat();
+            for (let i = nums.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [nums[i], nums[j]] = [nums[j], nums[i]];
+            }
+            let idx = 0;
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) board[r][c] = nums[idx++];
+            if (findSingleBestMatch().score > 0) shuffleBoard();
+            else renderBoard();
+        }
+
+        // High score persistence (optional improvement - localStorage)
+        if (localStorage.getItem('divisibilityCrushHighScore')) {
+            highScore = parseInt(localStorage.getItem('divisibilityCrushHighScore'));
+            document.getElementById('high-score').textContent = highScore;
+        }
+
+        function startGame() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('divisibilityCrushHighScore', highScore);
+                document.getElementById('high-score').textContent = highScore;
+            }
+            score = 0; timeLeft = GAME_TIME; gameActive = true; isProcessing = false; timeExpired = false;
+            document.getElementById('score').textContent = score;
+            document.getElementById('game-over-overlay').classList.remove('visible');
+            clearInterval(countdown);
+            countdown = setInterval(tick, 1000);
+            initBoard();
+            updateTimerDisplay();
+        }
+
+        handleSliderChange(activeMax);
+    </script>
+</body>
+</html>
