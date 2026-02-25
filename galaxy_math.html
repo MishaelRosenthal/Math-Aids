@@ -6,11 +6,14 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; cursor: crosshair; }
         #ui { position: absolute; top: 20px; left: 20px; color: #00ffcc; font-size: 24px; pointer-events: none; text-shadow: 0 0 15px #00ffcc; font-weight: bold; }
-        #game-over { 
+        
+        #game-over, #explanation-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; display: none; background: rgba(0,0,0,0.95); color: #fff;
             padding: 50px; border: 4px solid #00ffcc; border-radius: 20px; box-shadow: 0 0 30px #00ffcc; z-index: 10;
         }
+        #explanation-overlay { border-color: #ff3333; box-shadow: 0 0 30px #ff3333; }
+        
         button { background: #00ffcc; border: none; padding: 15px 30px; font-size: 20px; color: #000; cursor: pointer; border-radius: 5px; margin-top: 20px; font-weight: bold; }
         
         #start-msg { 
@@ -26,6 +29,8 @@
         ul { text-align: left; line-height: 1.6; font-size: 1.2rem; }
         .highlight { color: #ffff00; font-weight: bold; }
         .danger { color: #ff3333; font-weight: bold; }
+        .oops-text { font-size: 2.5rem; color: #ff3333; margin-bottom: 10px; font-weight: bold; }
+        .math-detail { font-size: 1.8rem; margin: 15px 0; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -49,6 +54,14 @@
         <p>FIRE PATTERN: Center → Both Sides</p>
     </div>
     <h2>PRESS ANY KEY TO START</h2>
+</div>
+
+<div id="explanation-overlay">
+    <div class="oops-text">Oops</div>
+    <div id="math-reason" class="math-detail"></div>
+    <div id="math-correction" class="math-detail" style="color: #00ffcc;"></div>
+    <div id="lives-left" style="font-size: 1.4rem; margin-top: 10px;"></div>
+    <h3 style="margin-top: 30px; letter-spacing: 2px;">PRESS ANY KEY TO CONTINUE</h3>
 </div>
 
 <div id="ui">SCORE: <span id="score">0</span> | LIVES: <span id="lives">3</span></div>
@@ -112,7 +125,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
-let score = 0, lives = 3, isGameOver = false, isStarted = false, blinkTimer = 0;
+let score = 0, lives = 3, isGameOver = false, isStarted = false, isPaused = false, blinkTimer = 0;
 let dropPityCounter = 0, firingStep = 0;
 
 const enemies = [], projectiles = [], prizes = [], particles = [], floatingTexts = [];
@@ -148,18 +161,42 @@ scene.add(ship);
 function generateMath() {
     const isCorrect = Math.random() < 0.5;
     const type = Math.floor(Math.random() * 3);
+    let leftSide = "";
+    let correctResult = "";
+    let displayedResult = "";
+
     if (type === 0) {
         const a = Math.floor(Math.random()*85)+10, b = Math.floor(Math.random()*15)+5;
         const op = Math.random() > 0.5 ? '+' : '-';
-        const res = op === '+' ? a + b : a - b;
-        return { text: `${a} ${op} ${b} = ${isCorrect ? res : res+3}`, correct: isCorrect };
+        leftSide = `${a} ${op} ${b}`;
+        correctResult = op === '+' ? (a + b).toString() : (a - b).toString();
+        displayedResult = isCorrect ? correctResult : (parseInt(correctResult) + (Math.random() > 0.5 ? 2 : -2)).toString();
     } else if (type === 1) {
         const a = Math.floor(Math.random()*11)+2, b = Math.floor(Math.random()*11)+2;
-        const prod = a * b; return { text: `${prod} : ${b} = ${isCorrect ? a : a+1}`, correct: isCorrect };
+        if (Math.random() > 0.5) {
+            leftSide = `${a} × ${b}`;
+            correctResult = (a * b).toString();
+            displayedResult = isCorrect ? correctResult : (parseInt(correctResult) + a).toString();
+        } else {
+            const prod = a * b;
+            leftSide = `${prod} : ${b}`;
+            correctResult = a.toString();
+            displayedResult = isCorrect ? correctResult : (a + 1).toString();
+        }
     } else {
         const d = Math.floor(Math.random()*6)+4, n1 = 1, n2 = 1;
-        return { text: `${n1}/${d} + ${n2}/${d} = ${isCorrect ? (n1+n2) : (n1+n2+1)}/${d}`, correct: isCorrect };
+        leftSide = `${n1}/${d} + ${n2}/${d}`;
+        correctResult = `${n1 + n2}/${d}`;
+        displayedResult = isCorrect ? correctResult : `${n1 + n2 + 1}/${d}`;
     }
+
+    return { 
+        text: `${leftSide} = ${displayedResult}`, 
+        leftSide: leftSide,
+        displayedResult: displayedResult,
+        solution: `${leftSide} = ${correctResult}`,
+        correct: isCorrect 
+    };
 }
 
 function spawnPrize(pos) {
@@ -175,9 +212,13 @@ function spawnPrize(pos) {
     prizes.push({ sprite, math }); scene.add(sprite);
 }
 
-// --- CORE GAME ENGINE ---
+// --- ENGINE ---
 function animate() {
-    if (isGameOver || !isStarted) { requestAnimationFrame(animate); return; }
+    if (isGameOver || !isStarted || isPaused) { 
+        requestAnimationFrame(animate); 
+        if (isPaused) renderer.render(scene, camera); 
+        return; 
+    }
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
 
@@ -187,10 +228,9 @@ function animate() {
         if (blinkTimer <= 0) shipMat.emissive.setHex(0x000000);
     }
 
-    // Enemy Control
     for (let i = enemies.length - 1; i >= 0; i--) {
         const en = enemies[i]; en.position.y -= 3.5 * dt;
-        if (en.position.distanceTo(ship.position) < 1.4) { createExplosion(ship.position, 0xff0000); handleHit(); scene.remove(en); enemies.splice(i, 1); continue; }
+        if (en.position.distanceTo(ship.position) < 1.4) { createExplosion(ship.position, 0xff0000); handleHit('asteroid'); scene.remove(en); enemies.splice(i, 1); continue; }
         for (let pi = projectiles.length - 1; pi >= 0; pi--) {
             if (projectiles[pi].position.distanceTo(en.position) < 0.9) {
                 createExplosion(en.position, 0xffaa00); dropPityCounter++;
@@ -202,12 +242,11 @@ function animate() {
         if (en && en.position.y < -12) { scene.remove(en); enemies.splice(i, 1); }
     }
 
-    // Equation Control
     for (let i = prizes.length - 1; i >= 0; i--) {
         const pr = prizes[i]; pr.sprite.position.y -= 2.2 * dt;
         if (pr.sprite.position.distanceTo(ship.position) < 1.6) {
             if (pr.math.correct) { addScore(100, pr.sprite.position); playSound('correct'); blinkTimer = 1.0; }
-            else { playSound('error'); createExplosion(ship.position, 0xff0000); handleHit(); }
+            else { handleHit('absorbed_wrong', pr.math); }
             scene.remove(pr.sprite); prizes.splice(i, 1); continue;
         }
         for (let pi = projectiles.length - 1; pi >= 0; pi--) {
@@ -215,7 +254,7 @@ function animate() {
                 if (!pr.math.correct) {
                     addScore(100, pr.sprite.position); playSound('correct'); createExplosion(pr.sprite.position, 0x00ffcc);
                 } else {
-                    playSound('error'); createExplosion(ship.position, 0xff0000); handleHit(); 
+                    handleHit('shot_correct', pr.math);
                 }
                 scene.remove(projectiles[pi]); projectiles.splice(pi, 1);
                 scene.remove(pr.sprite); prizes.splice(i, 1);
@@ -224,7 +263,6 @@ function animate() {
         }
     }
 
-    // VFX
     floatingTexts.forEach((ft, idx) => {
         ft.sprite.position.x += (-12 - ft.sprite.position.x) * 0.05; ft.sprite.position.y += (8 - ft.sprite.position.y) * 0.05;
         ft.life -= 0.02; ft.sprite.material.opacity = ft.life;
@@ -237,6 +275,7 @@ function animate() {
 }
 
 function startGame() {
+    if (isPaused) { resumeGame(); return; }
     if (!isStarted) {
         isStarted = true;
         document.getElementById('start-msg').style.display = 'none';
@@ -245,9 +284,19 @@ function startGame() {
     }
 }
 
-// Start Listeners
+// Logic fix: Check for Game Over AFTER the explanation is closed
+function resumeGame() { 
+    isPaused = false; 
+    document.getElementById('explanation-overlay').style.display = 'none'; 
+    if (lives <= 0) {
+        isGameOver = true;
+        document.getElementById('game-over').style.display = 'block';
+        document.getElementById('final-score').innerText = score;
+    }
+}
+
 window.addEventListener('keydown', startGame);
-window.addEventListener('mousedown', startGame);
+window.addEventListener('mousedown', (e) => { if (e.button === 0) startGame(); });
 
 function addScore(amount, pos) {
     const oldScore = score; score += amount;
@@ -260,28 +309,46 @@ function addScore(amount, pos) {
     if (Math.floor(score/2000) > Math.floor(oldScore/2000)) { lives++; playSound('lifeup'); updateUI(); }
 }
 
-function handleHit() { lives--; updateUI(); if (lives <= 0) { isGameOver = true; document.getElementById('game-over').style.display = 'block'; document.getElementById('final-score').innerText = score; } }
+function handleHit(reason, mathData = null) {
+    lives--; updateUI(); playSound('error');
+    
+    // Priority: Show the Oops message first if it's a math error
+    if (reason === 'asteroid') { 
+        createExplosion(ship.position, 0xff0000);
+        if (lives <= 0) {
+            isGameOver = true;
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-score').innerText = score;
+        }
+        return; 
+    }
+
+    isPaused = true;
+    const overlay = document.getElementById('explanation-overlay');
+    const reasonEl = document.getElementById('math-reason');
+    const correctionEl = document.getElementById('math-correction');
+    const livesEl = document.getElementById('lives-left');
+
+    if (reason === 'absorbed_wrong') {
+        reasonEl.innerHTML = `${mathData.leftSide} &ne; ${mathData.displayedResult}`;
+        correctionEl.innerText = `The correct solution is\n${mathData.solution}`;
+    } else if (reason === 'shot_correct') {
+        createExplosion(ship.position, 0xff0000);
+        reasonEl.innerText = `${mathData.text} is correct`;
+        correctionEl.innerText = "";
+    }
+
+    livesEl.innerText = `${lives} lives left,`;
+    overlay.style.display = 'block';
+}
+
 function updateUI() { document.getElementById('score').innerText = score; document.getElementById('lives').innerText = lives; }
+function createExplosion(pos, col) { playSound('explosion'); for (let i = 0; i < 20; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: col, transparent: true })); p.position.copy(pos); p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5), life: 1.0 }; scene.add(p); particles.push(p); } }
 
-function createExplosion(pos, col) { 
-    playSound('explosion'); 
-    for (let i = 0; i < 20; i++) { 
-        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: col, transparent: true })); 
-        p.position.copy(pos); 
-        p.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5), life: 1.0 }; 
-        scene.add(p); particles.push(p); 
-    } 
-}
+function createProjectile(offsetX, offsetY) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), new THREE.MeshBasicMaterial({ color: 0xffff00 })); p.position.copy(ship.position); p.position.x += offsetX; p.position.y += offsetY; projectiles.push(p); scene.add(p); }
 
-// --- FIRE SYSTEM ---
-function createProjectile(offsetX, offsetY) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-    p.position.copy(ship.position); p.position.x += offsetX; p.position.y += offsetY;
-    projectiles.push(p); scene.add(p);
-}
-
-window.addEventListener('mousedown', () => {
-    if (!isStarted || isGameOver) return;
+window.addEventListener('mousedown', (e) => {
+    if (!isStarted || isGameOver || isPaused || e.button !== 0) return;
     playSound('laser');
     if (firingStep === 0) { createProjectile(0, 0.15); } 
     else { createProjectile(-1.1, -0.05); createProjectile(1.1, -0.05); }
@@ -289,6 +356,7 @@ window.addEventListener('mousedown', () => {
 });
 
 window.addEventListener('mousemove', (e) => {
+    if (isPaused) return;
     ship.position.x = ((e.clientX / window.innerWidth) * 2 - 1) * 11;
     ship.position.y = (-(e.clientY / window.innerHeight) * 2 + 1) * 7;
     ship.rotation.z = -ship.position.x * 0.04;
@@ -297,11 +365,9 @@ window.addEventListener('mousemove', (e) => {
 
 function spawnEnemy() {
     if (isGameOver || !isStarted) return;
-    const en = new THREE.Group(); en.add(new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8), new THREE.MeshPhongMaterial({color: 0xff4444})));
-    en.position.set(THREE.MathUtils.randFloatSpread(18), 12, -12); enemies.push(en); scene.add(en);
+    if (!isPaused) { const en = new THREE.Group(); en.add(new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8), new THREE.MeshPhongMaterial({color: 0xff4444}))); en.position.set(THREE.MathUtils.randFloatSpread(18), 12, -12); enemies.push(en); scene.add(en); }
     setTimeout(spawnEnemy, 1400);
 }
-
 animate();
 </script>
 </body>
