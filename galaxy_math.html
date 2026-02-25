@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>3D Math Shooter: High-Contrast Edition</title>
+    <title>3D Math Shooter: Round Robin Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; cursor: crosshair; }
         #ui { position: absolute; top: 20px; left: 20px; color: #00ffcc; font-size: 24px; pointer-events: none; text-shadow: 0 0 15px #00ffcc; font-weight: bold; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<div id="start-msg">CLICK TO INITIALIZE MISSION</div>
+<div id="start-msg">CLICK TO ENGAGE SEQUENTIAL CANNONS</div>
 <div id="ui">SCORE: <span id="score">0</span> | LIVES: <span id="lives">3</span></div>
 <div id="game-over">
     <h1>PILOT DOWN</h1>
@@ -86,6 +86,9 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 let score = 0, lives = 3, isGameOver = false, blinkTimer = 0;
+let dropPityCounter = 0; 
+let currentGunIndex = 0; // State for Round Robin
+
 const enemies = [], projectiles = [], prizes = [], particles = [], floatingTexts = [];
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -141,28 +144,25 @@ function createFloatingScore(pos) {
     floatingTexts.push({ sprite, life: 1.0 });
 }
 
-// --- IMPROVED MATH LOGIC (With ":" for division) ---
+// --- MATH LOGIC ---
 function generateMath() {
     const isCorrect = Math.random() < 0.5;
     const type = Math.floor(Math.random() * 3);
     let eq = "";
-
-    if (type === 0) { // Arithmetic up to 100
+    if (type === 0) {
         const a = Math.floor(Math.random()*85)+10, b = Math.floor(Math.random()*15)+5;
         const op = Math.random() > 0.5 ? '+' : '-';
         const res = op === '+' ? a + b : a - b;
         eq = `${a} ${op} ${b} = ${isCorrect ? res : res + 3}`;
-    } else if (type === 1) { // 12x12
+    } else if (type === 1) {
         const a = Math.floor(Math.random()*11)+2, b = Math.floor(Math.random()*11)+2;
         const multi = Math.random() > 0.5;
         if (multi) {
             const res = a * b; eq = `${a} × ${b} = ${isCorrect ? res : res + a}`;
         } else {
-            const prod = a * b; 
-            // USING ":" FOR DIVISION AS REQUESTED
-            eq = `${prod} : ${b} = ${isCorrect ? a : a + 1}`;
+            const prod = a * b; eq = `${prod} : ${b} = ${isCorrect ? a : a + 1}`;
         }
-    } else { // Fractions with like denominators
+    } else {
         const d = Math.floor(Math.random()*6)+4, n1 = 1, n2 = 1;
         eq = `${n1}/${d} + ${n2}/${d} = ${isCorrect ? (n1+n2) : (n1+n2+1)}/${d}`;
     }
@@ -196,56 +196,96 @@ function animate() {
         if (blinkTimer <= 0) shipMat.emissive.setHex(0x000000);
     }
 
-    enemies.forEach((en, i) => {
+    // Enemies (Iterate backwards)
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const en = enemies[i];
         en.position.y -= 3.5 * dt;
+
         if (en.position.distanceTo(ship.position) < 1.4) {
             createExplosion(ship.position, 0xff0000);
-            handleHit(); scene.remove(en); enemies.splice(i, 1);
+            handleHit(); 
+            scene.remove(en); enemies.splice(i, 1);
+            continue;
         }
-        projectiles.forEach((p, pi) => {
+
+        for (let pi = projectiles.length - 1; pi >= 0; pi--) {
+            const p = projectiles[pi];
             if (p.position.distanceTo(en.position) < 0.9) {
                 createExplosion(en.position);
-                if (Math.random() < 0.25) spawnPrize(en.position);
+                dropPityCounter++;
+                if (Math.random() < 0.25 || dropPityCounter >= 4) {
+                    spawnPrize(en.position);
+                    dropPityCounter = 0; 
+                }
                 scene.remove(en); enemies.splice(i, 1);
                 scene.remove(p); projectiles.splice(pi, 1);
+                break; 
             }
-        });
-        if (en.position.y < -12) { scene.remove(en); enemies.splice(i, 1); }
-    });
+        }
+        if (en && en.position.y < -12) { scene.remove(en); enemies.splice(i, 1); }
+    }
 
-    prizes.forEach((pr, i) => {
+    // Equations
+    for (let i = prizes.length - 1; i >= 0; i--) {
+        const pr = prizes[i];
         pr.sprite.position.y -= 2.2 * dt;
         if (pr.sprite.position.distanceTo(ship.position) < 1.6) {
             if (pr.math.correct) { 
-                playSound('correct'); 
-                const oldScore = score;
-                score += 100; createFloatingScore(pr.sprite.position);
-                blinkTimer = 1.0;
-                if (Math.floor(score/2000) > Math.floor(oldScore/2000)) { lives++; playSound('lifeup'); }
-            } else { playSound('error'); createExplosion(ship.position, 0xff0000); handleHit(); }
-            updateUI(); scene.remove(pr.sprite); prizes.splice(i, 1);
+                addScore(100, pr.sprite.position);
+                playSound('correct'); blinkTimer = 1.0;
+            } else { 
+                playSound('error'); createExplosion(ship.position, 0xff0000); handleHit(); 
+            }
+            scene.remove(pr.sprite); prizes.splice(i, 1);
+            continue;
         }
-    });
 
-    floatingTexts.forEach((ft, i) => {
+        for (let pi = projectiles.length - 1; pi >= 0; pi--) {
+            const p = projectiles[pi];
+            if (p.position.distanceTo(pr.sprite.position) < 1.2) {
+                if (!pr.math.correct) {
+                    addScore(100, pr.sprite.position);
+                    playSound('correct');
+                    createExplosion(pr.sprite.position, 0x00ffcc);
+                } else {
+                    playSound('error');
+                    createExplosion(pr.sprite.position, 0xff0000);
+                }
+                scene.remove(p); projectiles.splice(pi, 1);
+                scene.remove(pr.sprite); prizes.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    // Floating Text, Particles, Projectiles
+    floatingTexts.forEach((ft, idx) => {
         ft.sprite.position.x += (-12 - ft.sprite.position.x) * 0.05;
         ft.sprite.position.y += (8 - ft.sprite.position.y) * 0.05;
         ft.life -= 0.02; ft.sprite.material.opacity = ft.life;
-        if (ft.life <= 0) { scene.remove(ft.sprite); floatingTexts.splice(i, 1); }
+        if (ft.life <= 0) { scene.remove(ft.sprite); floatingTexts.splice(idx, 1); }
     });
 
-    particles.forEach((p, i) => {
+    particles.forEach((p, idx) => {
         p.position.add(p.userData.vel);
         p.userData.life -= 0.025; p.material.opacity = p.userData.life;
-        if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
+        if (p.userData.life <= 0) { scene.remove(p); particles.splice(idx, 1); }
     });
 
-    projectiles.forEach((p, i) => {
+    projectiles.forEach((p, idx) => {
         p.position.y += 20 * dt;
-        if (p.position.y > 20) { scene.remove(p); projectiles.splice(i, 1); }
+        if (p.position.y > 20) { scene.remove(p); projectiles.splice(idx, 1); }
     });
 
     renderer.render(scene, camera);
+}
+
+function addScore(amount, pos) {
+    const oldScore = score;
+    score += amount;
+    createFloatingScore(pos);
+    updateUI();
+    if (Math.floor(score/2000) > Math.floor(oldScore/2000)) { lives++; playSound('lifeup'); }
 }
 
 function handleHit() {
@@ -255,20 +295,29 @@ function handleHit() {
 
 function updateUI() { document.getElementById('score').innerText = score; document.getElementById('lives').innerText = lives; }
 
-// --- CONTROLS ---
+// --- ROUND ROBIN CONTROLS ---
 window.addEventListener('mousedown', () => {
     if (document.getElementById('start-msg')) document.getElementById('start-msg').remove();
     if (isGameOver) return;
     playSound('laser');
     
-    // Choose exactly one gun uniformly at random
-    const guns = [{x: -1.1, y: -0.05}, {x: 1.1, y: -0.05}, {x: 0, y: 0.15}];
-    const chosen = guns[Math.floor(Math.random() * guns.length)];
-
+    // Pattern: Left (-1.1), Center (0), Right (1.1)
+    const guns = [
+        {x: -1.1, y: -0.05}, // Index 0: Left
+        {x: 0, y: 0.15},    // Index 1: Center
+        {x: 1.1, y: -0.05}   // Index 2: Right
+    ];
+    
+    const chosen = guns[currentGunIndex];
     const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
     p.position.copy(ship.position);
-    p.position.x += chosen.x; p.position.y += chosen.y;
-    projectiles.push(p); scene.add(p);
+    p.position.x += chosen.x; 
+    p.position.y += chosen.y;
+    projectiles.push(p); 
+    scene.add(p);
+
+    // Increment and loop the index
+    currentGunIndex = (currentGunIndex + 1) % guns.length;
 });
 
 window.addEventListener('mousemove', (e) => {
