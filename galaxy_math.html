@@ -51,7 +51,7 @@
             <li><span class="danger">CRITICAL:</span> Shooting a Correct Equation or absorbing a Wrong one loses <span class="danger">1 Life</span>.</li>
             <li><span class="highlight">REWARD:</span> Every 2000 points earned grants an <span class="highlight">Extra Life</span>.</li>
         </ul>
-        <p>FIRE PATTERN: Center → Both Sides</p>
+        <p>FIRE PATTERN: Center Cannon</p>
     </div>
     <h2>PRESS ANY KEY TO START</h2>
 </div>
@@ -126,7 +126,7 @@ document.body.appendChild(renderer.domElement);
 
 const clock = new THREE.Clock();
 let score = 0, lives = 3, isGameOver = false, isStarted = false, isPaused = false, blinkTimer = 0;
-let dropPityCounter = 0, firingStep = 0;
+let dropPityCounter = 0;
 
 const enemies = [], projectiles = [], prizes = [], particles = [], floatingTexts = [];
 
@@ -203,12 +203,18 @@ function spawnPrize(pos) {
     const math = generateMath();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 512; canvas.height = 128;
-    ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,512,128);
-    ctx.font = 'bold 48px Arial'; ctx.fillStyle = '#00ffcc'; ctx.textAlign = 'center';
-    ctx.fillText(math.text, 256, 82);
+    
+    // Increased canvas resolution and font size by 2x
+    canvas.width = 1024; canvas.height = 256;
+    ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,1024,256);
+    ctx.font = 'bold 96px Arial'; ctx.fillStyle = '#00ffcc'; ctx.textAlign = 'center';
+    ctx.fillText(math.text, 512, 164);
+    
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
-    sprite.scale.set(4, 1, 1); sprite.position.copy(pos);
+    
+    // Increased physical 3D sprite scale by 2x
+    sprite.scale.set(8, 2, 1); 
+    sprite.position.copy(pos);
     prizes.push({ sprite, math }); scene.add(sprite);
 }
 
@@ -244,13 +250,16 @@ function animate() {
 
     for (let i = prizes.length - 1; i >= 0; i--) {
         const pr = prizes[i]; pr.sprite.position.y -= 2.2 * dt;
-        if (pr.sprite.position.distanceTo(ship.position) < 1.6) {
+        
+        // Expanded absorption hitbox to account for 2x sprite size
+        if (pr.sprite.position.distanceTo(ship.position) < 2.5) {
             if (pr.math.correct) { addScore(100, pr.sprite.position); playSound('correct'); blinkTimer = 1.0; }
             else { handleHit('absorbed_wrong', pr.math); }
             scene.remove(pr.sprite); prizes.splice(i, 1); continue;
         }
         for (let pi = projectiles.length - 1; pi >= 0; pi--) {
-            if (projectiles[pi].position.distanceTo(pr.sprite.position) < 1.2) {
+            // Expanded projectile hitbox to account for 2x sprite size
+            if (projectiles[pi].position.distanceTo(pr.sprite.position) < 2.0) {
                 if (!pr.math.correct) {
                     addScore(100, pr.sprite.position); playSound('correct'); createExplosion(pr.sprite.position, 0x00ffcc);
                 } else {
@@ -350,9 +359,9 @@ function createProjectile(offsetX, offsetY) { const p = new THREE.Mesh(new THREE
 window.addEventListener('mousedown', (e) => {
     if (!isStarted || isGameOver || isPaused || e.button !== 0) return;
     playSound('laser');
-    if (firingStep === 0) { createProjectile(0, 0.15); } 
-    else { createProjectile(-1.1, -0.05); createProjectile(1.1, -0.05); }
-    firingStep = (firingStep + 1) % 2;
+    
+    // Always fire from the center cannon
+    createProjectile(0, 0.15); 
 });
 
 window.addEventListener('mousemove', (e) => {
